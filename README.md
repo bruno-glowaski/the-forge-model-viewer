@@ -2,7 +2,7 @@
 CMake files working for ConfettiFX/The-Forge 1.60
 
 How to use:
-1. Pull TheForge submodule, sadly I dont know the exact command but should be something like 'git submodule init' and 'git submodule update'.
+1. Pull TheForge submodule, sadly I dont know the exact command but should be something like """git submodule init""" and 'git submodule update'.
 2. Open Vendor/TheForge, run PRE_BUILD.bat or the PRE_BUILD script for your OS. Refer to https://github.com/ConfettiFX/The-Forge for the exact instructions (scroll down FAR).
 3. For Windows, open "x64 Native Tools Command Prompt for VS 2022" or whatever Visual Studio version you have, cd to the folder of what you downloaded this repo.
 4. Run 'cmake . -B build' or similiar.
