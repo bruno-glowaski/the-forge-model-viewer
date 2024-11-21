@@ -1,3 +1,6 @@
 [submodule "theforge"]
 	path = Vendor/TheForge
 	url = https://github.com/ConfettiFX/The-Forge.git
+[submodule "Vendor/TheForge"]
+	path = Vendor/TheForge
+	url = https://github.com/ConfettiFX/The-Forge.git
