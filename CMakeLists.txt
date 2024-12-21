@@ -2,7 +2,7 @@
 # 3.15 for CMAKE_CXX_COMPILER_FRONTEND_VARIANT
 cmake_minimum_required(VERSION 3.15)
 
-project(TheForgeCMake)
+project(TheForgeUtils)
 
 project(The-Forge LANGUAGES CXX C ASM)
 
@@ -18,20 +18,21 @@ include(TheForge)
 include(TheForgeUtils)
 include(SpirVTools)
 
-// Example of how to set up forge project
+file(GLOB MODEL_VIEWER_SRC "${CMAKE_SOURCE_DIR}/src/*.*")
 
-add_executable(01_Transformations
-    "Vendor/TheForge/Examples_3/Unit_Tests/src/01_Transformations/01_Transformations.cpp"
+add_executable(ModelViewer ${MODEL_VIEWER_SRC})
+
+file(COPY Assets DESTINATION "${CMAKE_BINARY_DIR}")
+file(COPY PathStatement.txt DESTINATION "${CMAKE_BINARY_DIR}")
+
+target_include_directories(ModelViewer PRIVATE 
+  "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/TheForge"
+	"${CMAKE_CURRENT_SOURCE_DIR}/Vendor/TheForge/Common_3" 
+	"${CMAKE_CURRENT_SOURCE_DIR}/Vendor/TheForge/Tools"
 )
+target_link_libraries(ModelViewer PRIVATE udev OS Renderer)
+set(VS_STARTUP_PROJECT ModelViewer)
 
-set_target_properties(01_Transformations PROPERTIES LINK_FLAGS /MACHINE:X64)
-target_include_directories(01_Transformations PRIVATE "${CMAKE_CURRENT_LIST_DIR}/Vendor/TheForge"
-	"${CMAKE_CURRENT_LIST_DIR}/Vendor/TheForge/Common_3" 
-	"${CMAKE_CURRENT_LIST_DIR}/Vendor/TheForge/Tools"
-)
-target_link_libraries(01_Transformations PRIVATE Xinput9_1_0 ws2_32 OS Renderer)
-set(VS_STARTUP_PROJECT 01_Transformations)
-
-tf_add_shader(01_Transformations ${CMAKE_SOURCE_DIR}/Vendor/TheForge/Examples_3/Unit_Tests/src/01_Transformations/Shaders/FSL/ShaderList.fsl)
-tf_add_forge_utils(01_Transformations)
+tf_add_shader(ModelViewer "${CMAKE_SOURCE_DIR}/src/shaders/ShaderList.fsl")
+tf_add_forge_utils(ModelViewer)
 

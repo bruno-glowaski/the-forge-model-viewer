@@ -168,22 +168,22 @@ function(tf_add_forge_utils forge_utils_name)
             set_source_files_properties(
                 ${TFORGE_DIR}/Common_3/OS/Darwin/iOSAppDelegate.m PROPERTIES COMPILE_FLAGS "-x objective-c -fobjc-arc"
             )
-            add_custom_command(
-                TARGET ${forge_utils_name}
-                POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy ${TFORGE_DIR}/Art/PathStatement.iOS.txt ${resources_dir}/PathStatement.txt
-                COMMENT "Copying IOS dependencies"
-            )
+            # add_custom_command(
+            #     TARGET ${forge_utils_name}
+            #     POST_BUILD
+            #     COMMAND ${CMAKE_COMMAND} -E copy ${TFORGE_DIR}/Art/PathStatement.iOS.txt ${resources_dir}/PathStatement.txt
+            #     COMMENT "Copying IOS dependencies"
+            # )
         else()
             set_source_files_properties(
                 ${TFORGE_DIR}/Common_3/OS/Darwin/macOSAppDelegate.m PROPERTIES COMPILE_FLAGS "-x objective-c -fobjc-arc"
             )
-            add_custom_command(
-                TARGET ${forge_utils_name}
-                POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy ${TFORGE_DIR}/Art/PathStatement.MacOS.txt ${resources_dir}/PathStatement.txt
-                COMMENT "Copying MacOS dependencies"
-            )
+            # add_custom_command(
+            #     TARGET ${forge_utils_name}
+            #     POST_BUILD
+            #     COMMAND ${CMAKE_COMMAND} -E copy ${TFORGE_DIR}/Art/PathStatement.MacOS.txt ${resources_dir}/PathStatement.txt
+            #     COMMENT "Copying MacOS dependencies"
+            # )
         endif()
         if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../macOS Xcode/${forge_utils_name}/${forge_utils_name}/Base.lproj/MainMenu.xib")
             add_custom_command(
@@ -204,23 +204,23 @@ function(tf_add_forge_utils forge_utils_name)
         endif()
     endif()
 
-    if(ANDROID)
-        add_custom_command(
-            TARGET ${forge_utils_name}
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy ${TFORGE_DIR}/Art/PathStatement.Android.txt ${resources_dir}/PathStatement.txt
-            COMMENT "Copying Android dependencies"
-        )
-    endif()
-
-    if(LINUX)
-        add_custom_command(
-            TARGET ${forge_utils_name}
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy ${TFORGE_DIR}/Art/PathStatement.SteamOS.txt ${resources_dir}/PathStatement.txt
-            COMMENT "Copying Linux/SteamOS dependencies"
-        )
-    endif()
+    # if(ANDROID)
+    #     add_custom_command(
+    #         TARGET ${forge_utils_name}
+    #         POST_BUILD
+    #         COMMAND ${CMAKE_COMMAND} -E copy ${TFORGE_DIR}/Art/PathStatement.Android.txt ${resources_dir}/PathStatement.txt
+    #         COMMENT "Copying Android dependencies"
+    #     )
+    # endif()
+    #
+    # if(LINUX)
+    #     add_custom_command(
+    #         TARGET ${forge_utils_name}
+    #         POST_BUILD
+    #         COMMAND ${CMAKE_COMMAND} -E copy ${TFORGE_DIR}/Art/PathStatement.SteamOS.txt ${resources_dir}/PathStatement.txt
+    #         COMMENT "Copying Linux/SteamOS dependencies"
+    #     )
+    # endif()
 
     # Copy common shaders
     # add_custom_command(
