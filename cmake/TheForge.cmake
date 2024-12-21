@@ -106,6 +106,7 @@ if(LINUX)
         ${TFORGE_COMMON_DIR}OS/Linux/LinuxWindow.cpp
         ${TFORGE_COMMON_DIR}Utilities/FileSystem/UnixFileSystem.c
         ${TFORGE_COMMON_DIR}Utilities/ThirdParty/OpenSource/zstd/decompress/huf_decompress_amd64.S
+        ${TFORGE_COMMON_DIR}OS/ThirdParty/OpenSource/hidapi/linux/hid.c
     )
 endif()
 

@@ -6,6 +6,13 @@ if(LINUX OR ${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Linux")
     execute_process(COMMAND chmod +x ${TFORGE_DIR}/Examples_3/forge_utilss/src/06_MaterialPlayground/compile_materials.sh)
 endif()
 
+# Determine Python command
+if(${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Linux")
+  set(TFORGE_PYTHON_COMMAND "python")
+else()
+  set(TFORGE_PYTHON_COMMAND  "${TFORGE_DIR}/Tools/python-3.6.0-embed-amd64/python.exe")
+endif()
+
 # Determines the unit test's resource dir
 function(determine_resources_dir forge_utils_name result_var)
     if(LINUX OR ANDROID)
@@ -86,7 +93,7 @@ function(tf_add_shader target_name shader_list_file)
     add_custom_command(
         OUTPUT ${resources_dir}/Shaders/${shader_list_filename}.fsl.deps
         COMMAND
-            ${TFORGE_DIR}/Tools/python-3.6.0-embed-amd64/python.exe ${TFORGE_DIR}/Common_3/Tools/ForgeShadingLanguage/fsl.py -l ${fsl_language} -d
+            ${TFORGE_PYTHON_COMMAND} ${TFORGE_DIR}/Common_3/Tools/ForgeShadingLanguage/fsl.py -l ${fsl_language} -d
             ${resources_dir}/Shaders --verbose -b ${resources_dir}/CompiledShaders -i ${resources_dir}/ --cache-args --incremental --compile
             ${shader_list_file}
         DEPENDS ${full_path_fsl_files} ${shader_list_file}
@@ -216,13 +223,13 @@ function(tf_add_forge_utils forge_utils_name)
     endif()
 
     # Copy common shaders
-    add_custom_command(
-        TARGET ${forge_utils_name}
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${forge_resources_dir}/Shaders ${resources_dir}/Shaders
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${forge_resources_dir}/CompiledShaders ${resources_dir}/CompiledShaders
-        COMMENT "Copying common shaders..."
-    )
+    # add_custom_command(
+    #     TARGET ${forge_utils_name}
+    #     POST_BUILD
+    #     COMMAND ${CMAKE_COMMAND} -E copy_directory ${forge_resources_dir}/Shaders ${resources_dir}/Shaders
+    #     COMMAND ${CMAKE_COMMAND} -E copy_directory ${forge_resources_dir}/CompiledShaders ${resources_dir}/CompiledShaders
+    #     COMMENT "Copying common shaders..."
+    # )
 
     # Copy GPU config
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/GPUCfg")
@@ -254,7 +261,7 @@ function(tf_add_forge_utils forge_utils_name)
     add_custom_command(
         TARGET ${forge_utils_name}
         POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${TFORGE_DIR}/Art/UnitTestResources/Fonts ${resources_dir}/Fonts
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${TFORGE_DIR}/Art/Fonts ${resources_dir}/Fonts
         COMMENT "Copying fonts..."
     )
 
@@ -262,7 +269,7 @@ function(tf_add_forge_utils forge_utils_name)
     add_custom_command(
         TARGET ${forge_utils_name}
         POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${TFORGE_DIR}/Art/UnitTestResources/Scripts ${resources_dir}/Scripts
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${TFORGE_DIR}/Art/Scripts ${resources_dir}/Scripts
         COMMENT "Copying scripts..."
     )
 
