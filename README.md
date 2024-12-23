@@ -1,15 +1,33 @@
-# ForgeCMake
-CMake files working for ConfettiFX/The-Forge 1.60
+# Model Viewer over The Forge Framework
 
-How to use:
-1. Pull TheForge submodule, sadly I dont know the exact command but should be something like `git submodule init` and `git submodule update`.
-2. Open Vendor/TheForge, run PRE_BUILD.bat or the PRE_BUILD script for your OS. Refer to https://github.com/ConfettiFX/The-Forge for the exact instructions (scroll down FAR).
-3. For Windows, open `x64 Native Tools Command Prompt for VS 2022` or whatever Visual Studio version you have, cd to the folder of what you downloaded this repo.
-4. Run `cmake . -B build` or similiar.
-5. Then you can open the solution in the created build folder, compile in Visual Studio
-6. Sadly you need to adjust the Working Directory for the Project manually for it to run, else it the Debugger wont find the files. I am working on this! Likewise change the active Project, I haven't manage to make it work with CMake.
+A 3D model viewer developed over the [The Forge Framework](https://github.com/ConfettiFX/The-Forge). Primarily designed to display a single specific FBX model file. Using [tomwjerry's ForgeCMake](https://github.com/tomwjerry/ForgeCMake), a set of CMake files, as a base.
 
-Refer to CMakeLists.txt how to set up an project, modify the lines after `
-// Example of how to set up forge project`. `tf_add_shader` will compile shaders in supplied ShaderList.fsl, `tf_add_forge_utils` is useful to automatically copy stuff needed to run The Forge.
+## Requirements
 
-Many thanks to https://github.com/Caellian for providing the intial CMake files!
+### Essential
+
+- [x] User can see a 3D model;
+- [x] User can rotate the camera around the model;
+- [ ] User can run this on Windows 11;
+
+### Extra
+
+- [ ] User can control the camera parameters;
+- [ ] User can scale the model as they please;
+- [ ] User can load any FBX model directly;
+- [ ] User can toggle multisampling;
+- [ ] User can configure lights;
+- [ ] User can toggle ambient occlusion;
+- [ ] User can toggle PBR shading.
+
+## Instructions
+
+1. If you have a FBX model, convert it to GLTF (you can use [this tool](https://github.com/facebookincubator/FBX2glTF));
+2. Compile The Forge's *AssetPipeline* CLI tool (on Linux, this happens while compiling this application);
+    - On Linux, you might need to run `make -C Vendor/Common_3/Tools/ThirdParty/OpenSource/ISPCTextureCompressor -f Makefile.linux ISPC_ARCH=x86-64 ISPC_TARGETS=sse2,avx ISPC_OBJS="sse2 avx" ARCH_CXXFLAGS=-msse2` beforehand. You may also change the `ISPC_` flags according to the features of your processor;
+3. Process the .GLTF file into a .BIN file using the *AssetPipeline*;
+4. Place the processed .BIN file in the `Assets/Meshes` directory, and rename it to `castle.bin`;
+5. Compile the project using `cmake -B build`;
+6. Navigate into the `build` directory;
+7. Run the application using `./ModelViewer`.
+
