@@ -19,6 +19,8 @@
 #include "Utilities/Interfaces/IMemory.h"
 #include "Utilities/Math/MathTypes.h"
 
+#include "OrbitCameraController.hpp"
+
 struct UniformBlock {
   CameraMatrix mModelProjectView;
 
@@ -250,11 +252,11 @@ public:
 
     waitForAllResourceLoads();
 
-    CameraMotionParameters cmp{160.0f, 600.0f, 200.0f};
-    vec3 camPos{24.0f, 24.0f, 10.0f};
+    CameraMotionParameters cmp{{}, 600.0f, 200.0f, 10.0f, PI};
+    vec3 camPos{0.0f, 0.0f, 10.0f};
     vec3 lookAt{vec3(0)};
 
-    pCameraController = initFpsCameraController(camPos, lookAt);
+    pCameraController = initOrbitCameraController(camPos, lookAt);
 
     pCameraController->setMotionParameters(cmp);
 
@@ -478,6 +480,8 @@ public:
       getQueryData(pRenderer, pPipelineStatsQueryPool[gFrameIndex], 0, &data3D);
       getQueryData(pRenderer, pPipelineStatsQueryPool[gFrameIndex], 1, &data2D);
       bformat(&gPipelineStats,
+              "Camera Position:   %f %f %f\n"
+              "Angle:                %f %f\n"
               "Pipeline Stats 3D:\n"
               "    VS invocations:      %u\n"
               "    PS invocations:      %u\n"
@@ -491,6 +495,11 @@ public:
               "    Clipper invocations: %u\n"
               "    IA primitives:       %u\n"
               "    Clipper primitives:  %u\n",
+              (float)pCameraController->getViewPosition().getX(),
+              (float)pCameraController->getViewPosition().getY(),
+              (float)pCameraController->getViewPosition().getZ(),
+              pCameraController->getRotationXY().getX(),
+              pCameraController->getRotationXY().getY(),
               data3D.mPipelineStats.mVSInvocations,
               data3D.mPipelineStats.mPSInvocations,
               data3D.mPipelineStats.mCInvocations,
