@@ -648,8 +648,8 @@ private:
     RasterizerStateDesc rasterizerStateDesc = {};
     rasterizerStateDesc.mCullMode = CULL_MODE_NONE;
 
-    RasterizerStateDesc sphereRasterizerStateDesc = {};
-    sphereRasterizerStateDesc.mCullMode = CULL_MODE_FRONT;
+    RasterizerStateDesc sceneRasterizerStateDesc = {};
+    sceneRasterizerStateDesc.mCullMode = CULL_MODE_NONE;
 
     DepthStateDesc depthStateDesc = {};
     depthStateDesc.mDepthTest = true;
@@ -671,7 +671,7 @@ private:
     pipelineSettings.pRootSignature = pRootSignature;
     pipelineSettings.pShaderProgram = pSceneShader;
     pipelineSettings.pVertexLayout = &gSceneVertexLayout;
-    pipelineSettings.pRasterizerState = &sphereRasterizerStateDesc;
+    pipelineSettings.pRasterizerState = &sceneRasterizerStateDesc;
     pipelineSettings.mVRFoveatedRendering = true;
     addPipeline(pRenderer, &desc, &pScenePipeline);
 
