@@ -72,11 +72,7 @@ UniformBlockSky gUniformDataSky;
 
 ICameraController *pCameraController = NULL;
 
-UIComponent *pGuiWindow = NULL;
-
 uint32_t gFontID = 0;
-
-QueryPool *pPipelineStatsQueryPool[gDataBufferCount] = {};
 
 const char *const kPSkyBoxImageFileNames[] = {
     "Skybox_right1.tex",  "Skybox_left2.tex",  "Skybox_top3.tex",
@@ -135,16 +131,6 @@ public:
     }
     setupGPUConfigurationPlatformParameters(pRenderer,
                                             settings.pExtendedSettings);
-
-    if (pRenderer->pGpu->mPipelineStatsQueries) {
-      QueryPoolDesc poolDesc = {};
-      poolDesc.mQueryCount = 3; // The count is 3 due to quest & multi-view use
-                                // otherwise 2 is enough as we use 2 queries.
-      poolDesc.mType = QUERY_TYPE_PIPELINE_STATISTICS;
-      for (uint32_t i = 0; i < gDataBufferCount; ++i) {
-        initQueryPool(pRenderer, &poolDesc, &pPipelineStatsQueryPool[i]);
-      }
-    }
 
     QueueDesc queueDesc = {};
     queueDesc.mType = QUEUE_TYPE_GRAPHICS;
@@ -282,9 +268,6 @@ public:
     for (uint32_t i = 0; i < gDataBufferCount; ++i) {
       removeResource(pSceneUniformBuffer[i]);
       removeResource(pSkyboxUniformBuffer[i]);
-      if (pRenderer->pGpu->mPipelineStatsQueries) {
-        exitQueryPool(pRenderer, pPipelineStatsQueryPool[i]);
-      }
     }
 
     removeResource(pSceneGeometry);
@@ -319,20 +302,6 @@ public:
     if (pReloadDesc->mType & (RELOAD_TYPE_RESIZE | RELOAD_TYPE_RENDERTARGET)) {
       // we only need to reload gui when the size of window changed
       loadProfilerUI(mSettings.mWidth, mSettings.mHeight);
-
-      UIComponentDesc guiDesc = {};
-      guiDesc.mStartPosition =
-          vec2(mSettings.mWidth * 0.01f, mSettings.mHeight * 0.2f);
-      uiAddComponent(GetName(), &guiDesc, &pGuiWindow);
-
-      if (pRenderer->pGpu->mPipelineStatsQueries) {
-        static float4 color = {1.0f, 1.0f, 1.0f, 1.0f};
-        DynamicTextWidget statsWidget;
-        statsWidget.pText = &gPipelineStats;
-        statsWidget.pColor = &color;
-        uiAddComponentWidget(pGuiWindow, "Pipeline Stats", &statsWidget,
-                             WIDGET_TYPE_DYNAMIC_TEXT);
-      }
 
       if (!addSwapChain())
         return false;
@@ -377,7 +346,6 @@ public:
     if (pReloadDesc->mType & (RELOAD_TYPE_RESIZE | RELOAD_TYPE_RENDERTARGET)) {
       removeSwapChain(pRenderer, pSwapChain);
       removeRenderTarget(pRenderer, pDepthBuffer);
-      uiRemoveComponent(pGuiWindow);
       unloadProfilerUI();
     }
 
@@ -474,53 +442,10 @@ public:
     // Reset cmd pool for this frame
     resetCmdPool(pRenderer, elem.pCmdPool);
 
-    if (pRenderer->pGpu->mPipelineStatsQueries) {
-      QueryData data3D = {};
-      QueryData data2D = {};
-      getQueryData(pRenderer, pPipelineStatsQueryPool[gFrameIndex], 0, &data3D);
-      getQueryData(pRenderer, pPipelineStatsQueryPool[gFrameIndex], 1, &data2D);
-      bformat(&gPipelineStats,
-              "Camera Position:   %f %f %f\n"
-              "Angle:                %f %f\n"
-              "Pipeline Stats 3D:\n"
-              "    VS invocations:      %u\n"
-              "    PS invocations:      %u\n"
-              "    Clipper invocations: %u\n"
-              "    IA primitives:       %u\n"
-              "    Clipper primitives:  %u\n"
-              "\n"
-              "Pipeline Stats 2D UI:\n"
-              "    VS invocations:      %u\n"
-              "    PS invocations:      %u\n"
-              "    Clipper invocations: %u\n"
-              "    IA primitives:       %u\n"
-              "    Clipper primitives:  %u\n",
-              (float)pCameraController->getViewPosition().getX(),
-              (float)pCameraController->getViewPosition().getY(),
-              (float)pCameraController->getViewPosition().getZ(),
-              pCameraController->getRotationXY().getX(),
-              pCameraController->getRotationXY().getY(),
-              data3D.mPipelineStats.mVSInvocations,
-              data3D.mPipelineStats.mPSInvocations,
-              data3D.mPipelineStats.mCInvocations,
-              data3D.mPipelineStats.mIAPrimitives,
-              data3D.mPipelineStats.mCPrimitives,
-              data2D.mPipelineStats.mVSInvocations,
-              data2D.mPipelineStats.mPSInvocations,
-              data2D.mPipelineStats.mCInvocations,
-              data2D.mPipelineStats.mIAPrimitives,
-              data2D.mPipelineStats.mCPrimitives);
-    }
-
     Cmd *cmd = elem.pCmds[0];
     beginCmd(cmd);
 
     cmdBeginGpuFrameProfile(cmd, gGpuProfileToken);
-    if (pRenderer->pGpu->mPipelineStatsQueries) {
-      cmdResetQuery(cmd, pPipelineStatsQueryPool[gFrameIndex], 0, 2);
-      QueryDesc queryDesc = {0};
-      cmdBeginQuery(cmd, pPipelineStatsQueryPool[gFrameIndex], &queryDesc);
-    }
 
     RenderTargetBarrier barriers[] = {
         {pRenderTarget, RESOURCE_STATE_PRESENT, RESOURCE_STATE_RENDER_TARGET},
@@ -566,14 +491,6 @@ public:
     cmdEndGpuTimestampQuery(cmd, gGpuProfileToken); // Draw Canvas
     cmdBindRenderTargets(cmd, NULL);
 
-    if (pRenderer->pGpu->mPipelineStatsQueries) {
-      QueryDesc queryDesc = {0};
-      cmdEndQuery(cmd, pPipelineStatsQueryPool[gFrameIndex], &queryDesc);
-
-      queryDesc = {1};
-      cmdBeginQuery(cmd, pPipelineStatsQueryPool[gFrameIndex], &queryDesc);
-    }
-
     cmdBeginGpuTimestampQuery(cmd, gGpuProfileToken, "Draw UI");
 
     bindRenderTargets = {};
@@ -600,12 +517,6 @@ public:
     cmdResourceBarrier(cmd, 0, NULL, 0, NULL, 1, barriers);
 
     cmdEndGpuFrameProfile(cmd, gGpuProfileToken);
-
-    if (pRenderer->pGpu->mPipelineStatsQueries) {
-      QueryDesc queryDesc = {1};
-      cmdEndQuery(cmd, pPipelineStatsQueryPool[gFrameIndex], &queryDesc);
-      cmdResolveQuery(cmd, pPipelineStatsQueryPool[gFrameIndex], 0, 2);
-    }
 
     endCmd(cmd);
 
