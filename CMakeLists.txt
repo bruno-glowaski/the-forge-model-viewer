@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_UNIT_TESTS "Build The-Forge's unit tests" ON)
-option(BUILD_ASSETPIPELINECMD "Build The-Forge's asset pipeline command" ON)
+option(BUILD_ASSETPIPELINE "Build The-Forge's asset pipeline command" ON)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
@@ -30,7 +30,13 @@ target_include_directories(ModelViewer PRIVATE
 	"${CMAKE_CURRENT_SOURCE_DIR}/Vendor/TheForge/Common_3" 
 	"${CMAKE_CURRENT_SOURCE_DIR}/Vendor/TheForge/Tools"
 )
-target_link_libraries(ModelViewer PRIVATE udev OS Renderer)
+
+set(MODEL_VIEWER_LIBS OS Renderer)
+if (LINUX)
+	list(APPEND MODEL_VIEWER_LIBS udev)
+endif()
+
+target_link_libraries(ModelViewer PRIVATE ${MODEL_VIEWER_LIBS})
 set(VS_STARTUP_PROJECT ModelViewer)
 
 tf_add_shader(ModelViewer "${CMAKE_SOURCE_DIR}/src/shaders/ShaderList.fsl")
