@@ -11,5 +11,7 @@ CTestTestfile.cmake
 _deps
 *-prefix/
 
+.vs/
+
 build/
 Assets/
