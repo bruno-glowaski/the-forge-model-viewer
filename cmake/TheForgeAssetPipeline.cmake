@@ -13,6 +13,8 @@ file(GLOB ISPCTEXTURECOMPRESSOR_OBJ ${TFORGE_COMMON_DIR}Tools/ThirdParty/OpenSou
 
 if (LINUX)
   list(APPEND ITOOLFILESYSTEM_SRC ${TFORGE_COMMON_DIR}OS/Linux/LinuxToolsFileSystem.c)
+elseif(WIN32)
+  list(APPEND ITOOLFILESYSTEM_SRC ${TFORGE_COMMON_DIR}OS/Windows/WindowsToolsFileSystem.cpp)
 endif()
 
 set(ASSETPIPELINE_SRC 
@@ -26,8 +28,10 @@ set(ASSETPIPELINE_SRC
   ${ZSTD_COMPRESS_SRC}
 )
 
+set(ASSETPIPELINE_LIB OS ozz_base ozz_animation ozz_animation_offline ${ISPCTEXTURECOMPRESSOR_OBJ})
+if(WIN32)
+  list(APPEND ASSETPIPELINE_LIB ws2_32)
+endif()
+
 add_executable(AssetPipeline ${ASSETPIPELINE_SRC})
-target_link_libraries(AssetPipeline 
-  PRIVATE OS ozz_base ozz_animation ozz_animation_offline
-  ${ISPCTEXTURECOMPRESSOR_OBJ}
-)
+target_link_libraries(AssetPipeline PRIVATE ${ASSETPIPELINE_LIB})

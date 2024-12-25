@@ -34,6 +34,8 @@ target_include_directories(ModelViewer PRIVATE
 set(MODEL_VIEWER_LIBS OS Renderer)
 if (LINUX)
 	list(APPEND MODEL_VIEWER_LIBS udev)
+elseif(WIN32)
+	list(APPEND MODEL_VIEWER_LIBS Xinput9_1_0 ws2_32)
 endif()
 
 target_link_libraries(ModelViewer PRIVATE ${MODEL_VIEWER_LIBS})
