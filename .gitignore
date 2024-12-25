@@ -12,6 +12,7 @@ _deps
 *-prefix/
 
 .vs/
+CMakeSettings.json
 
 build/
 Assets/
