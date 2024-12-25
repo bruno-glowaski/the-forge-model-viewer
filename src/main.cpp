@@ -151,6 +151,7 @@ public:
     // Load scene
     gSceneVertexLayout.mAttribCount = 3;
     gSceneVertexLayout.mBindingCount = 1;
+    gSceneVertexLayout.mBindings[0].mStride = sizeof(float3) + sizeof(uint32_t) + sizeof(float);
     gSceneVertexLayout.mAttribs[0].mSemantic = SEMANTIC_POSITION;
     gSceneVertexLayout.mAttribs[0].mFormat = TinyImageFormat_R32G32B32_SFLOAT;
     gSceneVertexLayout.mAttribs[0].mLocation = 0;
@@ -160,12 +161,11 @@ public:
     gSceneVertexLayout.mAttribs[1].mFormat = TinyImageFormat_R32_UINT;
     gSceneVertexLayout.mAttribs[1].mLocation = 1;
     gSceneVertexLayout.mAttribs[1].mOffset = 3 * sizeof(float);
-    gSceneVertexLayout.mAttribs[2].mBinding = 0;
+    gSceneVertexLayout.mAttribs[1].mBinding = 0;
     gSceneVertexLayout.mAttribs[2].mSemantic = SEMANTIC_TEXCOORD0;
     gSceneVertexLayout.mAttribs[2].mFormat = TinyImageFormat_R16G16_SFLOAT;
     gSceneVertexLayout.mAttribs[2].mLocation = 2;
-    gSceneVertexLayout.mAttribs[2].mOffset =
-        3 * sizeof(float) + sizeof(uint32_t);
+    gSceneVertexLayout.mAttribs[2].mOffset = sizeof(float3) + sizeof(uint32_t);
     gSceneVertexLayout.mAttribs[2].mBinding = 0;
     GeometryLoadDesc sceneGDesc = {};
     sceneGDesc.ppGeometry = &pSceneGeometry;
