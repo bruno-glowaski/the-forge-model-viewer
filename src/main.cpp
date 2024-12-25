@@ -72,6 +72,8 @@ UniformBlockSky gUniformDataSky;
 
 ICameraController *pCameraController = NULL;
 
+UIComponent* pControlsGui = NULL;
+
 uint32_t gFontID = 0;
 
 const char *const kPSkyBoxImageFileNames[] = {
@@ -113,8 +115,21 @@ const float gSkyBoxPoints[] = {
     10.0f,  4.0f,   10.0f,  -10.0f, 10.0f,  4.0f,
 };
 
-static unsigned char gPipelineStatsCharArray[2048] = {};
-static bstring gPipelineStats = bfromarr(gPipelineStatsCharArray);
+const char* const kControlsTextCharArray = "Manual:\n"
+"W: Zoom in\n"
+"S: Zoom out\n"
+"A: Orbit right\n"
+"D: Orbit left\n"
+"Q: Orbit down\n"
+"E: Orbit up\n"
+"Mouse drag: Orbit around\n";
+
+bstring gControlsText = bfromarr(kControlsTextCharArray);
+
+static float gCameraAcceleration = 600.0f;
+float gCameraBraking = 200.0f;
+float gCameraZoomSpeed = 1.0f;
+float gCameraOrbitSpeed = 1.0f;
 
 class ModelViewer : public IApp {
 public:
@@ -238,13 +253,10 @@ public:
 
     waitForAllResourceLoads();
 
-    CameraMotionParameters cmp{{}, 600.0f, 200.0f, 10.0f, PI};
     vec3 camPos{0.0f, 0.0f, 10.0f};
     vec3 lookAt{vec3(0)};
 
     pCameraController = initOrbitCameraController(camPos, lookAt);
-
-    pCameraController->setMotionParameters(cmp);
 
     AddCustomInputBindings();
     initScreenshotInterface(pRenderer, pGraphicsQueue);
@@ -303,6 +315,44 @@ public:
       // we only need to reload gui when the size of window changed
       loadProfilerUI(mSettings.mWidth, mSettings.mHeight);
 
+      UIComponentDesc constrolsGuiDesc{};
+      constrolsGuiDesc.mStartPosition = vec2(mSettings.mWidth * 0.01f, mSettings.mHeight * 0.2f);
+      uiAddComponent("Controls", &constrolsGuiDesc, &pControlsGui);
+
+      static float4 color = { 1.0f, 1.0f, 1.0f, 0.75f };
+      DynamicTextWidget controlsManualWidget;
+      controlsManualWidget.pText = &gControlsText;
+      controlsManualWidget.pColor = &color;
+      uiAddComponentWidget(pControlsGui, "Manual", &controlsManualWidget, WIDGET_TYPE_DYNAMIC_TEXT);
+
+      SliderFloatWidget cameraAccelerationWidget;
+      cameraAccelerationWidget.mMin = 0.0f;
+      cameraAccelerationWidget.mMax = 1000.0f;
+      cameraAccelerationWidget.mStep = 1.0f;
+      cameraAccelerationWidget.pData = &gCameraAcceleration;
+      uiAddComponentWidget(pControlsGui, "Camera Acceleration", &cameraAccelerationWidget, WIDGET_TYPE_SLIDER_FLOAT);
+
+      SliderFloatWidget cameraBrakingWidget;
+      cameraBrakingWidget.mMin = 0.0f;
+      cameraBrakingWidget.mMax = 1000.0f;
+      cameraBrakingWidget.mStep = 1.0f;
+      cameraBrakingWidget.pData = &gCameraBraking;
+      uiAddComponentWidget(pControlsGui, "Camera Braking", &cameraBrakingWidget, WIDGET_TYPE_SLIDER_FLOAT);
+
+      SliderFloatWidget cameraZoomSpeedWidget;
+      cameraZoomSpeedWidget.mMin = 0.0f;
+      cameraZoomSpeedWidget.mMax = 1000.0f;
+      cameraZoomSpeedWidget.mStep = 1.0f;
+      cameraZoomSpeedWidget.pData = &gCameraZoomSpeed;
+      uiAddComponentWidget(pControlsGui, "Zoom Speed", &cameraZoomSpeedWidget, WIDGET_TYPE_SLIDER_FLOAT);
+
+      SliderFloatWidget cameraOrbitSpeedWidget;
+      cameraOrbitSpeedWidget.mMin = 0.0f;
+      cameraOrbitSpeedWidget.mMax = 1000.0f;
+      cameraOrbitSpeedWidget.mStep = 1.0f;
+      cameraOrbitSpeedWidget.pData = &gCameraOrbitSpeed;
+      uiAddComponentWidget(pControlsGui, "Orbit Speed", &cameraOrbitSpeedWidget, WIDGET_TYPE_SLIDER_FLOAT);
+
       if (!addSwapChain())
         return false;
 
@@ -346,6 +396,7 @@ public:
     if (pReloadDesc->mType & (RELOAD_TYPE_RESIZE | RELOAD_TYPE_RENDERTARGET)) {
       removeSwapChain(pRenderer, pSwapChain);
       removeRenderTarget(pRenderer, pDepthBuffer);
+      uiRemoveComponent(pControlsGui);
       unloadProfilerUI();
     }
 
@@ -358,6 +409,9 @@ public:
 
   void Update(float deltaTime) {
     if (!uiIsFocused()) {
+      CameraMotionParameters cmp{ {}, gCameraAcceleration, gCameraBraking, gCameraZoomSpeed, gCameraOrbitSpeed };
+      pCameraController->setMotionParameters(cmp);
+
       pCameraController->onMove(
           {inputGetValue(0, CUSTOM_MOVE_X), inputGetValue(0, CUSTOM_MOVE_Y)});
       pCameraController->onRotate(
