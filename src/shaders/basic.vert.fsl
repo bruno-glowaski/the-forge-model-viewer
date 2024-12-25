@@ -41,7 +41,7 @@ VSOutput VS_MAIN(VSInput In, SV_InstanceID(uint) InstanceID)
 
     float3 blendedColor = uniformBlock.lightColor.rgb * lightIntensity;
     float3 diffuse = blendedColor * max(dot(normal.xyz, lightDir), 0.0);
-    float3 ambient = float3(ambientCoeff);
+    float3 ambient = float3(ambientCoeff, ambientCoeff, ambientCoeff);
     Out.Color = float4(diffuse + ambient, 1.0);
     RETURN(Out);
 }
