@@ -1,3 +1,5 @@
+include(ISPCTextureCompressor)
+
 set(ITOOLFILESYSTEM_SRC ${TFORGE_COMMON_DIR}Utilities/FileSystem/ToolFileSystem.c)
 file(GLOB ASSETPIPELINEBASE_SRC ${TFORGE_COMMON_DIR}Tools/AssetPipeline/src/*.cpp)
 set(BUNYARCHIVE_SRC 
@@ -9,7 +11,6 @@ file(GLOB MESHOPTIOMIZER_SRC ${TFORGE_COMMON_DIR}Tools/ThirdParty/OpenSource/mes
 set(TRESSFX_SRC ${TFORGE_COMMON_DIR}Resources/AnimationSystem/ThirdParty/OpenSource/TressFX/TressFXAsset.cpp)
 file(GLOB ZSTD_COMMON_SRC ${TFORGE_COMMON_DIR}Utilities/ThirdParty/OpenSource/zstd/common/*.c)
 file(GLOB ZSTD_COMPRESS_SRC ${TFORGE_COMMON_DIR}Utilities/ThirdParty/OpenSource/zstd/compress/*.c)
-file(GLOB ISPCTEXTURECOMPRESSOR_OBJ ${TFORGE_COMMON_DIR}Tools/ThirdParty/OpenSource/ISPCTextureCompressor/ispc_texcomp/*.o)
 
 if (LINUX)
   list(APPEND ITOOLFILESYSTEM_SRC ${TFORGE_COMMON_DIR}OS/Linux/LinuxToolsFileSystem.c)
@@ -28,9 +29,9 @@ set(ASSETPIPELINE_SRC
   ${ZSTD_COMPRESS_SRC}
 )
 
-set(ASSETPIPELINE_LIB OS ozz_base ozz_animation ozz_animation_offline ${ISPCTEXTURECOMPRESSOR_OBJ})
+set(ASSETPIPELINE_LIB OS ozz_base ozz_animation ozz_animation_offline ISPCTextureCompressor ${ISPCTEXTURECOMPRESSOR_OBJ})
 if(WIN32)
-  list(APPEND ASSETPIPELINE_LIB ws2_32)
+  list(APPEND ASSETPIPELINE_LIB winmm ws2_32)
 endif()
 
 add_executable(AssetPipeline ${ASSETPIPELINE_SRC})
