@@ -20,7 +20,6 @@
 #include "Utilities/Math/MathTypes.h"
 
 #include "OrbitCameraController.hpp"
-#include <cstdint>
 
 struct UniformBlock {
   CameraMatrix mModelProjectView;
@@ -50,39 +49,7 @@ Geometry *pSceneGeometry;
 GeometryData *pSceneGeometryData;
 Shader *pSceneShader = NULL;
 Pipeline *pScenePipeline = NULL;
-VertexLayout gSceneVertexLayout = {
-    .mBindings =
-        {
-            {sizeof(float3) + sizeof(uint32_t) + sizeof(float),
-             VERTEX_BINDING_RATE_VERTEX},
-        },
-    .mAttribs =
-        {
-            {
-                .mSemantic = SEMANTIC_POSITION,
-                .mFormat = TinyImageFormat_R32G32B32_SFLOAT,
-                .mBinding = 0,
-                .mLocation = 0,
-                .mOffset = 0,
-            },
-            {
-                .mSemantic = SEMANTIC_NORMAL,
-                .mFormat = TinyImageFormat_R32_UINT,
-                .mBinding = 0,
-                .mLocation = 1,
-                .mOffset = sizeof(float3),
-            },
-            {
-                .mSemantic = SEMANTIC_TEXCOORD0,
-                .mFormat = TinyImageFormat_R16G16_SFLOAT,
-                .mBinding = 0,
-                .mLocation = 2,
-                .mOffset = sizeof(float3) + sizeof(uint32_t),
-            },
-        },
-    .mBindingCount = 1,
-    .mAttribCount = 3,
-};
+VertexLayout gSceneVertexLayout = {};
 uint32_t gSceneLayoutType = 0;
 
 Shader *pSkyBoxDrawShader = NULL;
@@ -182,6 +149,24 @@ public:
     initResourceLoaderInterface(pRenderer);
 
     // Load scene
+    gSceneVertexLayout.mAttribCount = 3;
+    gSceneVertexLayout.mBindingCount = 1;
+    gSceneVertexLayout.mAttribs[0].mSemantic = SEMANTIC_POSITION;
+    gSceneVertexLayout.mAttribs[0].mFormat = TinyImageFormat_R32G32B32_SFLOAT;
+    gSceneVertexLayout.mAttribs[0].mLocation = 0;
+    gSceneVertexLayout.mAttribs[0].mOffset = 0;
+    gSceneVertexLayout.mAttribs[0].mBinding = 0;
+    gSceneVertexLayout.mAttribs[1].mSemantic = SEMANTIC_NORMAL;
+    gSceneVertexLayout.mAttribs[1].mFormat = TinyImageFormat_R32_UINT;
+    gSceneVertexLayout.mAttribs[1].mLocation = 1;
+    gSceneVertexLayout.mAttribs[1].mOffset = 3 * sizeof(float);
+    gSceneVertexLayout.mAttribs[2].mBinding = 0;
+    gSceneVertexLayout.mAttribs[2].mSemantic = SEMANTIC_TEXCOORD0;
+    gSceneVertexLayout.mAttribs[2].mFormat = TinyImageFormat_R16G16_SFLOAT;
+    gSceneVertexLayout.mAttribs[2].mLocation = 2;
+    gSceneVertexLayout.mAttribs[2].mOffset =
+        3 * sizeof(float) + sizeof(uint32_t);
+    gSceneVertexLayout.mAttribs[2].mBinding = 0;
     GeometryLoadDesc sceneGDesc = {};
     sceneGDesc.ppGeometry = &pSceneGeometry;
     sceneGDesc.ppGeometryData = &pSceneGeometryData;
@@ -691,18 +676,15 @@ private:
     addPipeline(pRenderer, &desc, &pScenePipeline);
 
     // layout and pipeline for skybox draw
-    VertexLayout vertexLayout = {
-        .mBindings = {sizeof(float4), VERTEX_BINDING_RATE_VERTEX},
-        .mAttribs = {{
-            .mSemantic = SEMANTIC_POSITION,
-            .mFormat = TinyImageFormat_R32G32B32A32_SFLOAT,
-            .mBinding = 0,
-            .mLocation = 0,
-            .mOffset = 0,
-        }},
-        .mBindingCount = 1,
-        .mAttribCount = 1,
-    };
+    VertexLayout vertexLayout = {};
+    vertexLayout.mBindingCount = 1;
+    vertexLayout.mBindings[0].mStride = sizeof(float4);
+    vertexLayout.mAttribCount = 1;
+    vertexLayout.mAttribs[0].mSemantic = SEMANTIC_POSITION;
+    vertexLayout.mAttribs[0].mFormat = TinyImageFormat_R32G32B32A32_SFLOAT;
+    vertexLayout.mAttribs[0].mBinding = 0;
+    vertexLayout.mAttribs[0].mLocation = 0;
+    vertexLayout.mAttribs[0].mOffset = 0;
     pipelineSettings.pVertexLayout = &vertexLayout;
 
     pipelineSettings.pDepthState = NULL;
