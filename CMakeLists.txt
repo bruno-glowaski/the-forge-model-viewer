@@ -69,6 +69,7 @@ endforeach()
 
 add_custom_target(ModelViewerAssets
 	COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_SOURCE_DIR}/PathStatement.txt" "${MODELVIEWER_RESOURCES_DIR}/PathStatement.txt"
+	COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_SOURCE_DIR}/gpu.cfg" "${MODELVIEWER_RESOURCES_DIR}/gpu.cfg"
 	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/Assets" "${MODELVIEWER_RESOURCES_DIR}/Assets"
 	DEPENDS AssetPipeline ${MODEL_VIEWER_TF_MESH}
 )

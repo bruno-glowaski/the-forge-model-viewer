@@ -253,7 +253,7 @@ function(tf_add_forge_utils forge_utils_name)
     add_custom_command(
         TARGET ${forge_utils_name}
         POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${gpu_data_file} ${resources_dir}/GPUCfg/gpu.data
+        COMMAND ${CMAKE_COMMAND} -E copy ${gpu_data_file} ${resources_dir}/gpu.data
         COMMENT "Copying GPU data..."
     )
 
