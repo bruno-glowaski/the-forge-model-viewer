@@ -36,3 +36,9 @@ endif()
 
 add_executable(AssetPipeline ${ASSETPIPELINE_SRC})
 target_link_libraries(AssetPipeline PRIVATE ${ASSETPIPELINE_LIB})
+
+if (LINUX)
+	set(ASSETPIPELINE_CMD "${CMAKE_CURRENT_BINARY_DIR}/AssetPipeline")
+elseif (WIN32)
+	set(ASSETPIPELINE_CMD "${CMAKE_CURRENT_BINARY_DIR}/AssetPipeline.exe")
+endif()

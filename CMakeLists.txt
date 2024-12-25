@@ -19,16 +19,12 @@ include(TheForgeUtils)
 include(SpirVTools)
 
 file(GLOB MODEL_VIEWER_SRC "${CMAKE_SOURCE_DIR}/src/*.*")
-
 add_executable(ModelViewer ${MODEL_VIEWER_SRC})
-
-file(COPY Assets DESTINATION "${CMAKE_BINARY_DIR}")
-file(COPY PathStatement.txt DESTINATION "${CMAKE_BINARY_DIR}")
 
 target_include_directories(ModelViewer PRIVATE 
   "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/TheForge"
-	"${CMAKE_CURRENT_SOURCE_DIR}/Vendor/TheForge/Common_3" 
-	"${CMAKE_CURRENT_SOURCE_DIR}/Vendor/TheForge/Tools"
+  "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/TheForge/Common_3" 
+  "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/TheForge/Tools"
 )
 
 set(MODEL_VIEWER_LIBS OS Renderer)
@@ -39,6 +35,19 @@ elseif(WIN32)
 endif()
 
 target_link_libraries(ModelViewer PRIVATE ${MODEL_VIEWER_LIBS})
+
+determine_resources_dir(ModelViewer MODELVIEWER_RESOURCES_DIR)
+
+file(GLOB MODEL_VIEWER_GLTF_MESHES "${CMAKE_SOURCE_DIR}/Assets/Meshes/*.gltf")
+add_custom_target(ModelViewerAssets 
+	COMMAND ${ASSETPIPELINE_CMD} -pgltf --input "${CMAKE_SOURCE_DIR}/Assets" --output "${CMAKE_SOURCE_DIR}/Assets"
+	COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_SOURCE_DIR}/PathStatement.txt" "${MODELVIEWER_RESOURCES_DIR}/PathStatement.txt"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/Assets" "${MODELVIEWER_RESOURCES_DIR}/Assets"
+	DEPENDS AssetPipeline ${MODEL_VIEWER_GLTF_MESHES}
+)
+
+add_dependencies(ModelViewer ModelViewerAssets)
+
 set(VS_STARTUP_PROJECT ModelViewer)
 
 tf_add_shader(ModelViewer "${CMAKE_SOURCE_DIR}/src/shaders/ShaderList.fsl")
