@@ -8,7 +8,7 @@ A 3D model viewer developed over the [The Forge Framework](https://github.com/Co
 
 - [x] User can see a 3D model;
 - [x] User can rotate the camera around the model;
-- [ ] User can run this on Windows 11;
+- [x] User can run this on Windows 10;
 
 ### Extra
 
@@ -20,14 +20,26 @@ A 3D model viewer developed over the [The Forge Framework](https://github.com/Co
 - [ ] User can toggle ambient occlusion;
 - [ ] User can toggle PBR shading.
 
-## Instructions
+## Compile instructions
 
-1. If you have a FBX model, convert it to GLTF (you can use [this tool](https://github.com/facebookincubator/FBX2glTF));
-2. Compile The Forge's *AssetPipeline* CLI tool (on Linux, this happens while compiling this application);
-    - On Linux, you might need to run `make -C Vendor/Common_3/Tools/ThirdParty/OpenSource/ISPCTextureCompressor -f Makefile.linux ISPC_ARCH=x86-64 ISPC_TARGETS=sse2,avx ISPC_OBJS="sse2 avx" ARCH_CXXFLAGS=-msse2` beforehand. You may also change the `ISPC_` flags according to the features of your processor;
-3. Process the .GLTF file into a .BIN file using the *AssetPipeline*;
-4. Place the processed .BIN file in the `Assets/Meshes` directory, and rename it to `castle.bin`;
-5. Compile the project using `cmake -B build`;
-6. Navigate into the `build` directory;
-7. Run the application using `./ModelViewer`.
+1. Clone this repository and its submodules:
+```sh
+git clone --recurse-submodules https://github.com/bruno-glowaski/the-forge-model-viewer
+```
+2. Run `Vendor/TheForge/PRE_BUILD.bat`, or `Vendor/TheForge/PRE_BUILD.command` (on Linux or Mac) to download the assets;
+3. Create a `Assets` folder and copy some assets into it:
+    - The FBX model, renamed `castle.fbx` into `Assets/Meshes`;
+    - Skybox textures, from `Art/Textures` folder from the previous script, into `Assets/Textures`:
+        - Obs.: On Windows, use the textures inside `dds`; on Linux, use the textures `ktx`;
+        - "Skybox_right1.tex";
+        - "Skybox_left2.tex";
+        - "Skybox_top3.tex";
+        - "Skybox_bottom4.tex";
+        - "Skybox_front5.tex";
+        - "Skybox_back6.tex";
+    - The GUI font, `TitilliumText`, from `Art/Fonts`, into `Assets/Fonts`;
+        - Obs.: copy the whole folder;
+5. Compile and configure the project.
+
+On Windows, either use Visual Studios 2019 or comment out line 239-243 in `Vendor/TheForge/Common_3/Application/Config.h` to disable the MSVC whitelist.
 
