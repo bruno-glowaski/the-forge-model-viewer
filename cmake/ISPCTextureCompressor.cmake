@@ -10,9 +10,9 @@ elseif(${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Windows")
 else()
 	message(FATAL_ERROR "Unsupported platform")
 endif()
-set(ISPC_ARCH x86-64)
-set(ISPC_TARGETS sse2,avx)
-set(ISPC_EXTS sse2 avx)
+set(ISPC_ARCH "x86-64")
+set(ISPC_TARGET sse2,sse4,avx,avx2)
+set(ISPC_EXTS sse2 sse4 avx avx2)
 set(ISPC_ARCH_CXXFLAGS -msse2)
 
 # OBJS = ispc_texcomp/kernel_astc_ispc.o \
@@ -22,14 +22,14 @@ set(ISPC_ARCH_CXXFLAGS -msse2)
 # ispc_texcomp/ispc_texcomp_astc.o \
 # ispc_texcomp/ispc_texcomp.o
 
-set(ISPC_FLAGS -O2 --arch=${ISPC_ARCH} --target=${ISPC_TARGETS} --opt=fast-math --pic)
+set(ISPC_FLAGS -O2 --arch=${ISPC_ARCH} "--target=${ISPC_TARGETS}" --opt=fast-math --pic)
 
 set(ISPC_CXX_SRC ${ISPC_DIR}/ispc_texcomp/ispc_texcomp.cpp ${ISPC_DIR}/ispc_texcomp/ispc_texcomp_astc.cpp)
 set(ISPC_ISPC_SRC ${ISPC_DIR}/ispc_texcomp/kernel.ispc ${ISPC_DIR}/ispc_texcomp/kernel_astc.ispc)
 
 foreach(ISPC_EXT ${ISPC_EXTS})
 	foreach(ISPC_SRC_FILE ${ISPC_ISPC_SRC})
-		string(REGEX REPLACE "[.]ispc$" "_ispc_${ISPC_EXT}.o" ISPC_OBJ_FILE ${ISPC_SRC_FILE})
+		string(REGEX REPLACE "[.]ispc$" "_ispc_${ISPC_EXT}.obj" ISPC_OBJ_FILE ${ISPC_SRC_FILE})
 		string(REGEX REPLACE "[.]ispc$" "_ispc_${ISPC_EXT}.h" ISPC_H_FILE ${ISPC_SRC_FILE})
 		add_custom_command(
 			OUTPUT ${ISPC_OBJ_FILE} ${ISPC_H_FILE}
@@ -41,20 +41,10 @@ foreach(ISPC_EXT ${ISPC_EXTS})
 		list(APPEND ISPC_ISPC_H ${ISPC_H_FILE})
 	endforeach()
 endforeach()
-foreach(ISPC_SRC_FILE ${ISPC_ISPC_SRC})
-	string(REGEX REPLACE "[.]ispc$" "_ispc.o" ISPC_OBJ_FILE ${ISPC_SRC_FILE})
-	string(REGEX REPLACE "[.]ispc$" "_ispc.h" ISPC_H_FILE ${ISPC_SRC_FILE})
-	add_custom_command(
-		OUTPUT ${ISPC_OBJ_FILE} ${ISPC_H_FILE}
-		COMMAND ${ISPC_CMD} ${ISPC_FLAGS} -o ${ISPC_OBJ_FILE} -h ${ISPC_H_FILE} ${ISPC_SRC_FILE}
-		DEPENDS ${ISPC_SRC_FILE}
-		VERBATIM
-	)
-	list(APPEND ISPC_ISPC_OBJ ${ISPC_OBJ_FILE})
-	list(APPEND ISPC_ISPC_H ${ISPC_H_FILE})
-endforeach()
 add_custom_target(ISPCHeaders DEPENDS ${ISPC_ISPC_H})
 
+message("${ISPC_ISPC_H}")
+message("${ISPC_ISPC_OBJ}")
 add_library(ISPCTextureCompressor ${ISPC_ISPC_OBJ} ${ISPC_CXX_SRC})
 add_dependencies(ISPCTextureCompressor ISPCHeaders)
 target_include_directories(ISPCTextureCompressor PRIVATE "${ISPC_DIR}/ispc_texcomp")

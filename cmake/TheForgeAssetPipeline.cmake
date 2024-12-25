@@ -29,7 +29,7 @@ set(ASSETPIPELINE_SRC
   ${ZSTD_COMPRESS_SRC}
 )
 
-set(ASSETPIPELINE_LIB OS ozz_base ozz_animation ozz_animation_offline ISPCTextureCompressor ${ISPCTEXTURECOMPRESSOR_OBJ})
+set(ASSETPIPELINE_LIB OS ozz_base ozz_animation ozz_animation_offline ISPCTextureCompressor)
 if(WIN32)
   list(APPEND ASSETPIPELINE_LIB winmm ws2_32)
 endif()
