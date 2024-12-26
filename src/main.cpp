@@ -72,8 +72,6 @@ UniformBlockSky gUniformDataSky;
 
 ICameraController *pCameraController = NULL;
 
-UIComponent* pControlsGui = NULL;
-
 uint32_t gFontID = 0;
 
 const char *const kPSkyBoxImageFileNames[] = {
@@ -115,6 +113,7 @@ const float gSkyBoxPoints[] = {
     10.0f,  4.0f,   10.0f,  -10.0f, 10.0f,  4.0f,
 };
 
+UIComponent* pControlsGui = NULL;
 const char* const kControlsTextCharArray = "Manual:\n"
 "W: Zoom in\n"
 "S: Zoom out\n"
@@ -123,13 +122,15 @@ const char* const kControlsTextCharArray = "Manual:\n"
 "Q: Orbit down\n"
 "E: Orbit up\n"
 "Mouse drag: Orbit around\n";
-
 bstring gControlsText = bfromarr(kControlsTextCharArray);
 
 static float gCameraAcceleration = 600.0f;
 float gCameraBraking = 200.0f;
 float gCameraZoomSpeed = 1.0f;
 float gCameraOrbitSpeed = 1.0f;
+
+UIComponent* pSceneGui = NULL;
+float gSceneScale = 1.0f;
 
 class ModelViewer : public IApp {
 public:
@@ -316,7 +317,7 @@ public:
       loadProfilerUI(mSettings.mWidth, mSettings.mHeight);
 
       UIComponentDesc constrolsGuiDesc{};
-      constrolsGuiDesc.mStartPosition = vec2(mSettings.mWidth * 0.01f, mSettings.mHeight * 0.2f);
+      constrolsGuiDesc.mStartPosition = vec2(mSettings.mWidth * 0.01f, mSettings.mHeight * 0.01f);
       uiAddComponent("Controls", &constrolsGuiDesc, &pControlsGui);
 
       static float4 color = { 1.0f, 1.0f, 1.0f, 0.75f };
@@ -352,6 +353,17 @@ public:
       cameraOrbitSpeedWidget.mStep = 1.0f;
       cameraOrbitSpeedWidget.pData = &gCameraOrbitSpeed;
       uiAddComponentWidget(pControlsGui, "Orbit Speed", &cameraOrbitSpeedWidget, WIDGET_TYPE_SLIDER_FLOAT);
+
+      UIComponentDesc sceneGuiDesc{};
+      sceneGuiDesc.mStartPosition = vec2(mSettings.mWidth * 0.01f, mSettings.mHeight * 0.87f);
+      uiAddComponent("Scene", &sceneGuiDesc, &pSceneGui);
+
+      SliderFloatWidget sceneScaleWidget;
+      sceneScaleWidget.mMin = 0.0f;
+      sceneScaleWidget.mMax = 100.0f;
+      sceneScaleWidget.mStep = 0.1f;
+      sceneScaleWidget.pData = &gSceneScale;
+      uiAddComponentWidget(pSceneGui, "Scale", &sceneScaleWidget, WIDGET_TYPE_SLIDER_FLOAT);
 
       if (!addSwapChain())
         return false;
@@ -396,6 +408,7 @@ public:
     if (pReloadDesc->mType & (RELOAD_TYPE_RESIZE | RELOAD_TYPE_RENDERTARGET)) {
       removeSwapChain(pRenderer, pSwapChain);
       removeRenderTarget(pRenderer, pDepthBuffer);
+      uiRemoveComponent(pSceneGui);
       uiRemoveComponent(pControlsGui);
       unloadProfilerUI();
     }
@@ -449,7 +462,8 @@ public:
     const float horizontal_fov = PI / 2.0f;
     CameraMatrix projMat = CameraMatrix::perspectiveReverseZ(
         horizontal_fov, aspectInverse, 0.1f, 1000.0f);
-    gUniformData.mModelProjectView = projMat * viewMat;
+    mat4 modelMat = mat4::scale(vec3(gSceneScale));
+    gUniformData.mModelProjectView = projMat * viewMat * modelMat;
 
     // point light parameters
     gUniformData.mLightPosition = vec4(0, 0, 0, 0);
