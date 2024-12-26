@@ -19,6 +19,7 @@
 #include "Utilities/Interfaces/IMemory.h"
 #include "Utilities/Math/MathTypes.h"
 
+#include "RenderContext.hpp"
 #include "OrbitCameraController.hpp"
 
 struct UniformBlock {
@@ -32,17 +33,6 @@ struct UniformBlock {
 struct UniformBlockSky {
   CameraMatrix mProjectView;
 };
-
-const uint32_t gDataBufferCount = 2;
-
-Renderer *pRenderer = NULL;
-
-Queue *pGraphicsQueue = NULL;
-GpuCmdRing gGraphicsCmdRing = {};
-
-SwapChain *pSwapChain = NULL;
-RenderTarget *pDepthBuffer = NULL;
-Semaphore *pImageAcquiredSemaphore = NULL;
 
 const char *const kSceneMeshPath = "castle.bin";
 Geometry *pSceneGeometry;
@@ -61,8 +51,8 @@ Texture *pSkyBoxTextures[6];
 DescriptorSet *pDescriptorSetTexture = {NULL};
 DescriptorSet *pDescriptorSetUniforms = {NULL};
 
-Buffer *pSceneUniformBuffer[gDataBufferCount] = {NULL};
-Buffer *pSkyboxUniformBuffer[gDataBufferCount] = {NULL};
+Buffer *pSceneUniformBuffer[RenderContext::kDataBufferCount] = {NULL};
+Buffer *pSkyboxUniformBuffer[RenderContext::kDataBufferCount] = {NULL};
 
 uint32_t gFrameIndex = 0;
 ProfileToken gGpuProfileToken = PROFILE_INVALID_TOKEN;
@@ -136,33 +126,10 @@ class ModelViewer : public IApp {
 public:
   bool Init() {
     // window and renderer setup
-    RendererDesc settings;
-    memset(&settings, 0, sizeof(settings));
-    initGPUConfiguration(settings.pExtendedSettings);
-    initRenderer(GetName(), &settings, &pRenderer);
-    // check for init success
-    if (!pRenderer) {
-      ShowUnsupportedMessage("Failed To Initialize renderer!");
-      return false;
+    if (!mRenderContext.Init(GetName())) {
+        ShowUnsupportedMessage("Failed To Initialize renderer!");
+        return false;
     }
-    setupGPUConfigurationPlatformParameters(pRenderer,
-                                            settings.pExtendedSettings);
-
-    QueueDesc queueDesc = {};
-    queueDesc.mType = QUEUE_TYPE_GRAPHICS;
-    queueDesc.mFlag = QUEUE_FLAG_INIT_MICROPROFILE;
-    initQueue(pRenderer, &queueDesc, &pGraphicsQueue);
-
-    GpuCmdRingDesc cmdRingDesc = {};
-    cmdRingDesc.pQueue = pGraphicsQueue;
-    cmdRingDesc.mPoolCount = gDataBufferCount;
-    cmdRingDesc.mCmdPerPoolCount = 1;
-    cmdRingDesc.mAddSyncPrimitives = true;
-    initGpuCmdRing(pRenderer, &cmdRingDesc, &gGraphicsCmdRing);
-
-    initSemaphore(pRenderer, &pImageAcquiredSemaphore);
-
-    initResourceLoaderInterface(pRenderer);
 
     // Load scene
     gSceneVertexLayout.mAttribCount = 3;
@@ -204,7 +171,7 @@ public:
                                ADDRESS_MODE_CLAMP_TO_EDGE,
                                ADDRESS_MODE_CLAMP_TO_EDGE,
                                ADDRESS_MODE_CLAMP_TO_EDGE};
-    addSampler(pRenderer, &samplerDesc, &pSamplerSkyBox);
+    pSamplerSkyBox = mRenderContext.CreateSampler(&samplerDesc);
 
     uint64_t skyBoxDataSize = 4 * 6 * 6 * sizeof(float);
     BufferLoadDesc skyboxVbDesc = {};
@@ -220,7 +187,7 @@ public:
     ubDesc.mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
     ubDesc.mDesc.mFlags = BUFFER_CREATION_FLAG_PERSISTENT_MAP_BIT;
     ubDesc.pData = NULL;
-    for (uint32_t i = 0; i < gDataBufferCount; ++i) {
+    for (uint32_t i = 0; i < RenderContext::kDataBufferCount; ++i) {
       ubDesc.mDesc.pName = "ProjViewUniformBuffer";
       ubDesc.mDesc.mSize = sizeof(UniformBlock);
       ubDesc.ppBuffer = &pSceneUniformBuffer[i];
@@ -235,22 +202,8 @@ public:
     font.pFontPath = "TitilliumText/TitilliumText-Bold.otf";
     fntDefineFonts(&font, 1, &gFontID);
 
-    FontSystemDesc fontRenderDesc = {};
-    fontRenderDesc.pRenderer = pRenderer;
-    if (!initFontSystem(&fontRenderDesc))
-      return false; // report?
-
-    UserInterfaceDesc uiRenderDesc = {};
-    uiRenderDesc.pRenderer = pRenderer;
-    initUserInterface(&uiRenderDesc);
-
-    // Initialize micro profiler and its UI.
-    ProfilerDesc profiler = {};
-    profiler.pRenderer = pRenderer;
-    initProfiler(&profiler);
-
     // Gpu profiler can only be added after initProfile.
-    gGpuProfileToken = initGpuProfiler(pRenderer, pGraphicsQueue, "Graphics");
+    gGpuProfileToken = mRenderContext.CreateGpuProfiler("Graphics");
 
     waitForAllResourceLoads();
 
@@ -260,25 +213,15 @@ public:
     pCameraController = initOrbitCameraController(camPos, lookAt);
 
     AddCustomInputBindings();
-    initScreenshotInterface(pRenderer, pGraphicsQueue);
     gFrameIndex = 0;
 
     return true;
   }
 
   void Exit() {
-    exitScreenshotInterface();
-
     exitCameraController(pCameraController);
 
-    exitUserInterface();
-
-    exitFontSystem();
-
-    // Exit profile
-    exitProfiler();
-
-    for (uint32_t i = 0; i < gDataBufferCount; ++i) {
+    for (uint32_t i = 0; i < RenderContext::kDataBufferCount; ++i) {
       removeResource(pSceneUniformBuffer[i]);
       removeResource(pSkyboxUniformBuffer[i]);
     }
@@ -288,24 +231,18 @@ public:
 
     removeResource(pSkyBoxVertexBuffer);
 
+    mRenderContext.DestroySampler(pSamplerSkyBox);
+
     for (uint i = 0; i < 6; ++i)
       removeResource(pSkyBoxTextures[i]);
 
-    removeSampler(pRenderer, pSamplerSkyBox);
-
-    exitGpuCmdRing(pRenderer, &gGraphicsCmdRing);
-    exitSemaphore(pRenderer, pImageAcquiredSemaphore);
-
-    exitResourceLoaderInterface(pRenderer);
-
-    exitQueue(pRenderer, pGraphicsQueue);
-
-    exitRenderer(pRenderer);
-    exitGPUConfiguration();
-    pRenderer = NULL;
+    mRenderContext.Exit();
   }
 
   bool Load(ReloadDesc *pReloadDesc) {
+    mRenderContext.Load(pWindow->handle, mSettings.mWidth, mSettings.mHeight, 
+        mSettings.mVSyncEnabled, pReloadDesc);
+
     if (pReloadDesc->mType & RELOAD_TYPE_SHADER) {
       addShaders();
       addRootSignatures();
@@ -313,9 +250,6 @@ public:
     }
 
     if (pReloadDesc->mType & (RELOAD_TYPE_RESIZE | RELOAD_TYPE_RENDERTARGET)) {
-      // we only need to reload gui when the size of window changed
-      loadProfilerUI(mSettings.mWidth, mSettings.mHeight);
-
       UIComponentDesc constrolsGuiDesc{};
       constrolsGuiDesc.mStartPosition = vec2(mSettings.mWidth * 0.01f, mSettings.mHeight * 0.01f);
       uiAddComponent("Controls", &constrolsGuiDesc, &pControlsGui);
@@ -364,12 +298,6 @@ public:
       sceneScaleWidget.mStep = 0.1f;
       sceneScaleWidget.pData = &gSceneScale;
       uiAddComponentWidget(pSceneGui, "Scale", &sceneScaleWidget, WIDGET_TYPE_SLIDER_FLOAT);
-
-      if (!addSwapChain())
-        return false;
-
-      if (!addDepthBuffer())
-        return false;
     }
 
     if (pReloadDesc->mType & (RELOAD_TYPE_SHADER | RELOAD_TYPE_RENDERTARGET)) {
@@ -378,39 +306,21 @@ public:
 
     prepareDescriptorSets();
 
-    UserInterfaceLoadDesc uiLoad = {};
-    uiLoad.mColorFormat = pSwapChain->ppRenderTargets[0]->mFormat;
-    uiLoad.mHeight = mSettings.mHeight;
-    uiLoad.mWidth = mSettings.mWidth;
-    uiLoad.mLoadType = pReloadDesc->mType;
-    loadUserInterface(&uiLoad);
-
-    FontSystemLoadDesc fontLoad = {};
-    fontLoad.mColorFormat = pSwapChain->ppRenderTargets[0]->mFormat;
-    fontLoad.mHeight = mSettings.mHeight;
-    fontLoad.mWidth = mSettings.mWidth;
-    fontLoad.mLoadType = pReloadDesc->mType;
-    loadFontSystem(&fontLoad);
-
     return true;
   }
 
   void Unload(ReloadDesc *pReloadDesc) {
-    waitQueueIdle(pGraphicsQueue);
+    mRenderContext.WaitIdle();
 
-    unloadFontSystem(pReloadDesc->mType);
-    unloadUserInterface(pReloadDesc->mType);
+    mRenderContext.Unload(pReloadDesc);
 
     if (pReloadDesc->mType & (RELOAD_TYPE_SHADER | RELOAD_TYPE_RENDERTARGET)) {
       removePipelines();
     }
 
     if (pReloadDesc->mType & (RELOAD_TYPE_RESIZE | RELOAD_TYPE_RENDERTARGET)) {
-      removeSwapChain(pRenderer, pSwapChain);
-      removeRenderTarget(pRenderer, pDepthBuffer);
       uiRemoveComponent(pSceneGui);
       uiRemoveComponent(pControlsGui);
-      unloadProfilerUI();
     }
 
     if (pReloadDesc->mType & RELOAD_TYPE_SHADER) {
@@ -475,25 +385,12 @@ public:
   }
 
   void Draw() {
-    if ((bool)pSwapChain->mEnableVsync != mSettings.mVSyncEnabled) {
-      waitQueueIdle(pGraphicsQueue);
-      ::toggleVSync(pRenderer, &pSwapChain);
+    if (mRenderContext.IsVSyncEnabled() != mSettings.mVSyncEnabled) {
+      mRenderContext.WaitIdle();
+      mRenderContext.ToggleVSync();
     }
 
-    uint32_t swapchainImageIndex;
-    acquireNextImage(pRenderer, pSwapChain, pImageAcquiredSemaphore, NULL,
-                     &swapchainImageIndex);
-
-    RenderTarget *pRenderTarget =
-        pSwapChain->ppRenderTargets[swapchainImageIndex];
-    GpuCmdRingElement elem =
-        getNextGpuCmdRingElement(&gGraphicsCmdRing, true, 1);
-
-    // Stall if CPU is running "gDataBufferCount" frames ahead of GPU
-    FenceStatus fenceStatus;
-    getFenceStatus(pRenderer, elem.pFence, &fenceStatus);
-    if (fenceStatus == FENCE_STATUS_INCOMPLETE)
-      waitForFences(pRenderer, 1, &elem.pFence);
+    RenderContext::Frame frame = mRenderContext.BeginFrame();
 
     // Update uniform buffers
     BufferUpdateDesc viewProjCbv = {pSceneUniformBuffer[gFrameIndex]};
@@ -507,16 +404,11 @@ public:
            sizeof(gUniformDataSky));
     endUpdateResource(&skyboxViewProjCbv);
 
-    // Reset cmd pool for this frame
-    resetCmdPool(pRenderer, elem.pCmdPool);
-
-    Cmd *cmd = elem.pCmds[0];
-    beginCmd(cmd);
-
+    Cmd* cmd = frame.mCmdRingElement.pCmds[0];
     cmdBeginGpuFrameProfile(cmd, gGpuProfileToken);
 
     RenderTargetBarrier barriers[] = {
-        {pRenderTarget, RESOURCE_STATE_PRESENT, RESOURCE_STATE_RENDER_TARGET},
+        {frame.pImage, RESOURCE_STATE_PRESENT, RESOURCE_STATE_RENDER_TARGET},
     };
     cmdResourceBarrier(cmd, 0, NULL, 0, NULL, 1, barriers);
 
@@ -525,25 +417,25 @@ public:
     // simply record the screen cleaning command
     BindRenderTargetsDesc bindRenderTargets = {};
     bindRenderTargets.mRenderTargetCount = 1;
-    bindRenderTargets.mRenderTargets[0] = {pRenderTarget, LOAD_ACTION_CLEAR};
-    bindRenderTargets.mDepthStencil = {pDepthBuffer, LOAD_ACTION_CLEAR};
+    bindRenderTargets.mRenderTargets[0] = {frame.pImage, LOAD_ACTION_CLEAR};
+    bindRenderTargets.mDepthStencil = {frame.pDepthBuffer, LOAD_ACTION_CLEAR};
     cmdBindRenderTargets(cmd, &bindRenderTargets);
-    cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth,
-                   (float)pRenderTarget->mHeight, 0.0f, 1.0f);
-    cmdSetScissor(cmd, 0, 0, pRenderTarget->mWidth, pRenderTarget->mHeight);
+    cmdSetViewport(cmd, 0.0f, 0.0f, (float)frame.pImage->mWidth,
+                   (float)frame.pImage->mHeight, 0.0f, 1.0f);
+    cmdSetScissor(cmd, 0, 0, frame.pImage->mWidth, frame.pImage->mHeight);
 
     const uint32_t skyboxVbStride = sizeof(float) * 4;
     // draw skybox
     cmdBeginGpuTimestampQuery(cmd, gGpuProfileToken, "Draw Skybox");
-    cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth,
-                   (float)pRenderTarget->mHeight, 1.0f, 1.0f);
+    cmdSetViewport(cmd, 0.0f, 0.0f, (float)frame.pImage->mWidth,
+                   (float)frame.pImage->mHeight, 1.0f, 1.0f);
     cmdBindPipeline(cmd, pSkyBoxDrawPipeline);
     cmdBindDescriptorSet(cmd, 0, pDescriptorSetTexture);
     cmdBindDescriptorSet(cmd, gFrameIndex * 2 + 0, pDescriptorSetUniforms);
     cmdBindVertexBuffer(cmd, 1, &pSkyBoxVertexBuffer, &skyboxVbStride, NULL);
     cmdDraw(cmd, 36, 0);
-    cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth,
-                   (float)pRenderTarget->mHeight, 0.0f, 1.0f);
+    cmdSetViewport(cmd, 0.0f, 0.0f, (float)frame.pImage->mWidth,
+                   (float)frame.pImage->mHeight, 0.0f, 1.0f);
     cmdEndGpuTimestampQuery(cmd, gGpuProfileToken);
 
     cmdBeginGpuTimestampQuery(cmd, gGpuProfileToken, "Draw Scene");
@@ -563,7 +455,7 @@ public:
 
     bindRenderTargets = {};
     bindRenderTargets.mRenderTargetCount = 1;
-    bindRenderTargets.mRenderTargets[0] = {pRenderTarget, LOAD_ACTION_LOAD};
+    bindRenderTargets.mRenderTargets[0] = { frame.pImage, LOAD_ACTION_LOAD};
     bindRenderTargets.mDepthStencil = {NULL, LOAD_ACTION_DONTCARE};
     cmdBindRenderTargets(cmd, &bindRenderTargets);
 
@@ -580,41 +472,13 @@ public:
     cmdEndGpuTimestampQuery(cmd, gGpuProfileToken);
     cmdBindRenderTargets(cmd, NULL);
 
-    barriers[0] = {pRenderTarget, RESOURCE_STATE_RENDER_TARGET,
+    barriers[0] = { frame.pImage, RESOURCE_STATE_RENDER_TARGET,
                    RESOURCE_STATE_PRESENT};
     cmdResourceBarrier(cmd, 0, NULL, 0, NULL, 1, barriers);
 
     cmdEndGpuFrameProfile(cmd, gGpuProfileToken);
 
-    endCmd(cmd);
-
-    FlushResourceUpdateDesc flushUpdateDesc = {};
-    flushUpdateDesc.mNodeIndex = 0;
-    flushResourceUpdates(&flushUpdateDesc);
-    Semaphore *waitSemaphores[2] = {flushUpdateDesc.pOutSubmittedSemaphore,
-                                    pImageAcquiredSemaphore};
-
-    QueueSubmitDesc submitDesc = {};
-    submitDesc.mCmdCount = 1;
-    submitDesc.mSignalSemaphoreCount = 1;
-    submitDesc.mWaitSemaphoreCount = TF_ARRAY_COUNT(waitSemaphores);
-    submitDesc.ppCmds = &cmd;
-    submitDesc.ppSignalSemaphores = &elem.pSemaphore;
-    submitDesc.ppWaitSemaphores = waitSemaphores;
-    submitDesc.pSignalFence = elem.pFence;
-    queueSubmit(pGraphicsQueue, &submitDesc);
-
-    QueuePresentDesc presentDesc = {};
-    presentDesc.mIndex = (uint8_t)swapchainImageIndex;
-    presentDesc.mWaitSemaphoreCount = 1;
-    presentDesc.pSwapChain = pSwapChain;
-    presentDesc.ppWaitSemaphores = &elem.pSemaphore;
-    presentDesc.mSubmitDone = true;
-
-    queuePresent(pGraphicsQueue, &presentDesc);
-    flipProfiler();
-
-    gFrameIndex = (gFrameIndex + 1) % gDataBufferCount;
+    mRenderContext.EndFrame(std::move(frame));
   }
 
   const char *GetName() { return "ModelViewer"; }
@@ -625,57 +489,19 @@ public:
   }
 
 private:
-  bool addSwapChain() {
-    SwapChainDesc swapChainDesc = {};
-    swapChainDesc.mWindowHandle = pWindow->handle;
-    swapChainDesc.mPresentQueueCount = 1;
-    swapChainDesc.ppPresentQueues = &pGraphicsQueue;
-    swapChainDesc.mWidth = mSettings.mWidth;
-    swapChainDesc.mHeight = mSettings.mHeight;
-    swapChainDesc.mImageCount =
-        getRecommendedSwapchainImageCount(pRenderer, &pWindow->handle);
-    swapChainDesc.mColorFormat = getSupportedSwapchainFormat(
-        pRenderer, &swapChainDesc, COLOR_SPACE_SDR_SRGB);
-    swapChainDesc.mColorSpace = COLOR_SPACE_SDR_SRGB;
-    swapChainDesc.mEnableVsync = mSettings.mVSyncEnabled;
-    swapChainDesc.mFlags =
-        SWAP_CHAIN_CREATION_FLAG_ENABLE_FOVEATED_RENDERING_VR;
-    ::addSwapChain(pRenderer, &swapChainDesc, &pSwapChain);
-
-    return pSwapChain != NULL;
-  }
-
-  bool addDepthBuffer() {
-    // Add depth buffer
-    RenderTargetDesc depthRT = {};
-    depthRT.mArraySize = 1;
-    depthRT.mClearValue.depth = 0.0f;
-    depthRT.mClearValue.stencil = 0;
-    depthRT.mDepth = 1;
-    depthRT.mFormat = TinyImageFormat_D32_SFLOAT;
-    depthRT.mStartState = RESOURCE_STATE_DEPTH_WRITE;
-    depthRT.mHeight = mSettings.mHeight;
-    depthRT.mSampleCount = SAMPLE_COUNT_1;
-    depthRT.mSampleQuality = 0;
-    depthRT.mWidth = mSettings.mWidth;
-    depthRT.mFlags =
-        TEXTURE_CREATION_FLAG_ON_TILE | TEXTURE_CREATION_FLAG_VR_MULTIVIEW;
-    addRenderTarget(pRenderer, &depthRT, &pDepthBuffer);
-
-    return pDepthBuffer != NULL;
-  }
+  RenderContext mRenderContext;
 
   void addDescriptorSets() {
     DescriptorSetDesc desc = {pRootSignature, DESCRIPTOR_UPDATE_FREQ_NONE, 1};
-    addDescriptorSet(pRenderer, &desc, &pDescriptorSetTexture);
+    pDescriptorSetTexture = mRenderContext.CreateDescriptorSet(&desc);
     desc = {pRootSignature, DESCRIPTOR_UPDATE_FREQ_PER_FRAME,
-            gDataBufferCount * 2};
-    addDescriptorSet(pRenderer, &desc, &pDescriptorSetUniforms);
+            RenderContext::kDataBufferCount * 2};
+    pDescriptorSetUniforms = mRenderContext.CreateDescriptorSet(&desc);
   }
 
   void removeDescriptorSets() {
-    removeDescriptorSet(pRenderer, pDescriptorSetTexture);
-    removeDescriptorSet(pRenderer, pDescriptorSetUniforms);
+    mRenderContext.DestroyDescriptorSet(pDescriptorSetTexture);
+    mRenderContext.DestroyDescriptorSet(pDescriptorSetUniforms);
   }
 
   void addRootSignatures() {
@@ -687,11 +513,11 @@ private:
     RootSignatureDesc rootDesc = {};
     rootDesc.mShaderCount = shadersCount;
     rootDesc.ppShaders = shaders;
-    addRootSignature(pRenderer, &rootDesc, &pRootSignature);
+    pRootSignature = mRenderContext.CreateRootSignature(&rootDesc);
   }
 
   void removeRootSignatures() {
-    removeRootSignature(pRenderer, pRootSignature);
+    mRenderContext.DestroyRootSignature(pRootSignature);
   }
 
   void addShaders() {
@@ -703,13 +529,13 @@ private:
     basicShader.mVert.pFileName = "basic.vert";
     basicShader.mFrag.pFileName = "basic.frag";
 
-    addShader(pRenderer, &skyShader, &pSkyBoxDrawShader);
-    addShader(pRenderer, &basicShader, &pSceneShader);
+    pSkyBoxDrawShader = mRenderContext.LoadShader(&skyShader);
+    pSceneShader = mRenderContext.LoadShader(&basicShader);
   }
 
   void removeShaders() {
-    removeShader(pRenderer, pSceneShader);
-    removeShader(pRenderer, pSkyBoxDrawShader);
+    mRenderContext.DestroyShader(pSceneShader);
+    mRenderContext.DestroyShader(pSkyBoxDrawShader);
   }
 
   void addPipelines() {
@@ -724,24 +550,25 @@ private:
     depthStateDesc.mDepthWrite = true;
     depthStateDesc.mDepthFunc = CMP_GEQUAL;
 
+    TinyImageFormat swapChainFormat = mRenderContext.GetSwapChainFormat();
     PipelineDesc desc = {};
     desc.mType = PIPELINE_TYPE_GRAPHICS;
     GraphicsPipelineDesc &pipelineSettings = desc.mGraphicsDesc;
     pipelineSettings.mPrimitiveTopo = PRIMITIVE_TOPO_TRI_LIST;
     pipelineSettings.mRenderTargetCount = 1;
     pipelineSettings.pDepthState = &depthStateDesc;
-    pipelineSettings.pColorFormats = &pSwapChain->ppRenderTargets[0]->mFormat;
+    pipelineSettings.pColorFormats = &swapChainFormat;
     pipelineSettings.mSampleCount =
-        pSwapChain->ppRenderTargets[0]->mSampleCount;
+        mRenderContext.GetSwapChainSampleCount();
     pipelineSettings.mSampleQuality =
-        pSwapChain->ppRenderTargets[0]->mSampleQuality;
-    pipelineSettings.mDepthStencilFormat = pDepthBuffer->mFormat;
+        mRenderContext.GetSwapChainSampleQuality();
+    pipelineSettings.mDepthStencilFormat = mRenderContext.GetDepthFormat();
     pipelineSettings.pRootSignature = pRootSignature;
     pipelineSettings.pShaderProgram = pSceneShader;
     pipelineSettings.pVertexLayout = &gSceneVertexLayout;
     pipelineSettings.pRasterizerState = &sceneRasterizerStateDesc;
     pipelineSettings.mVRFoveatedRendering = true;
-    addPipeline(pRenderer, &desc, &pScenePipeline);
+    pScenePipeline = mRenderContext.CreatePipeline(&desc);
 
     // layout and pipeline for skybox draw
     VertexLayout vertexLayout = {};
@@ -758,12 +585,12 @@ private:
     pipelineSettings.pDepthState = NULL;
     pipelineSettings.pRasterizerState = &rasterizerStateDesc;
     pipelineSettings.pShaderProgram = pSkyBoxDrawShader; //-V519
-    addPipeline(pRenderer, &desc, &pSkyBoxDrawPipeline);
+    pSkyBoxDrawPipeline = mRenderContext.CreatePipeline(&desc);
   }
 
   void removePipelines() {
-    removePipeline(pRenderer, pSkyBoxDrawPipeline);
-    removePipeline(pRenderer, pScenePipeline);
+    mRenderContext.DestroyPipeline(pSkyBoxDrawPipeline);
+    mRenderContext.DestroyPipeline(pScenePipeline);
   }
 
   void prepareDescriptorSets() {
@@ -783,18 +610,18 @@ private:
     params[5].ppTextures = &pSkyBoxTextures[5];
     params[6].pName = "uSampler0";
     params[6].ppSamplers = &pSamplerSkyBox;
-    updateDescriptorSet(pRenderer, 0, pDescriptorSetTexture, 7, params);
+    mRenderContext.UpdateDescriptorSet(pDescriptorSetTexture, 0, 7, params);
 
-    for (uint32_t i = 0; i < gDataBufferCount; ++i) {
+    for (uint32_t i = 0; i < RenderContext::kDataBufferCount; ++i) {
       DescriptorData uParams[1] = {};
       uParams[0].pName = "uniformBlock";
       uParams[0].ppBuffers = &pSkyboxUniformBuffer[i];
-      updateDescriptorSet(pRenderer, i * 2 + 0, pDescriptorSetUniforms, 1,
+      mRenderContext.UpdateDescriptorSet(pDescriptorSetUniforms, i * 2 + 0, 1,
                           uParams);
 
       uParams[0].pName = "uniformBlock";
       uParams[0].ppBuffers = &pSceneUniformBuffer[i];
-      updateDescriptorSet(pRenderer, i * 2 + 1, pDescriptorSetUniforms, 1,
+      mRenderContext.UpdateDescriptorSet(pDescriptorSetUniforms, i * 2 + 1, 1,
                           uParams);
     }
   }
