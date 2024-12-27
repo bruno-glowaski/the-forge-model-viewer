@@ -371,11 +371,13 @@ public:
     }
 
     pCameraController->update(deltaTime);
-    /************************************************************************/
-    // Scene Update
-    /************************************************************************/
-    static float currentTime = 0.0f;
-    currentTime += deltaTime * 1000.0f;
+  }
+
+  void Draw() {
+    if (mRenderContext.IsVSyncEnabled() != mSettings.mVSyncEnabled) {
+      mRenderContext.WaitIdle();
+      mRenderContext.ToggleVSync();
+    }
 
     // update camera with time
     mat4 viewMat = pCameraController->getViewMatrix();
@@ -395,13 +397,6 @@ public:
     viewMat.setTranslation(vec3(0));
     gUniformDataSky = {};
     gUniformDataSky.mProjectView = projMat * viewMat;
-  }
-
-  void Draw() {
-    if (mRenderContext.IsVSyncEnabled() != mSettings.mVSyncEnabled) {
-      mRenderContext.WaitIdle();
-      mRenderContext.ToggleVSync();
-    }
 
     RenderContext::Frame frame = mRenderContext.BeginFrame();
 
