@@ -65,13 +65,10 @@ public:
   }
 
   bool Load(ReloadDesc *pReloadDesc) {
-    mRenderContext.Load(pWindow->handle, mSettings.mWidth, mSettings.mHeight,
-                        mSettings.mVSyncEnabled, pReloadDesc);
-
-    if (pReloadDesc->mType & RELOAD_TYPE_SHADER) {
-      addShaders();
-      addRootSignatures();
-      addDescriptorSets();
+    if (!mRenderContext.Load(pWindow->handle, mSettings.mWidth,
+                             mSettings.mHeight, mSettings.mVSyncEnabled,
+                             pReloadDesc)) {
+      return false;
     }
     mRenderSystem.Load(mRenderContext, mSkyBox, pReloadDesc);
 
