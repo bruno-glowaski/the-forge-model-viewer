@@ -221,15 +221,11 @@ RenderContext::Frame RenderContext::BeginFrame() {
   // Reset cmd pool for this frame
   resetCmdPool(pRenderer, elem.pCmdPool);
 
-  beginCmd(elem.pCmds[0]);
-
   return RenderContext::Frame{mFrameIndex, imageIndex, pRenderTarget,
                               pDepthBuffer, elem};
 }
 
 void RenderContext::EndFrame(RenderContext::Frame &&frame) {
-  endCmd(frame.mCmdRingElement.pCmds[0]);
-
   FlushResourceUpdateDesc flushUpdateDesc = {};
   flushUpdateDesc.mNodeIndex = 0;
   flushResourceUpdates(&flushUpdateDesc);

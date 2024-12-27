@@ -199,8 +199,9 @@ public:
 
     RenderContext::Frame frame = mRenderContext.BeginFrame();
     Cmd *cmd = frame.mCmdRingElement.pCmds[0];
-    cmdBeginGpuFrameProfile(cmd, mGpuProfileToken);
 
+    beginCmd(cmd);
+    cmdBeginGpuFrameProfile(cmd, mGpuProfileToken);
     RenderTargetBarrier barriers[] = {
         {frame.pImage, RESOURCE_STATE_PRESENT, RESOURCE_STATE_RENDER_TARGET},
     };
