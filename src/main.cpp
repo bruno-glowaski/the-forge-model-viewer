@@ -22,6 +22,7 @@
 #include "OrbitCameraController.hpp"
 #include "RenderContext.hpp"
 #include "Scene.hpp"
+#include "SceneRenderSystem.hpp"
 #include "SkyBox.hpp"
 
 class ModelViewer : public IApp {
