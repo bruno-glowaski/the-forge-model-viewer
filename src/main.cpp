@@ -290,7 +290,6 @@ public:
       mRenderContext.ToggleVSync();
     }
 
-    // update camera with time
     mat4 viewMat = pCameraController->getViewMatrix();
 
     const float aspectInverse =
@@ -301,7 +300,6 @@ public:
     mat4 modelMat = mat4::scale(vec3(gSceneScale));
     mUniformData.mModelProjectView = projMat * viewMat * modelMat;
 
-    // point light parameters
     mUniformData.mLightPosition = vec4(0, 0, 0, 0);
     mUniformData.mLightColor = vec4(0.9f, 0.9f, 0.7f, 1.0f); // Pale Yellow
 
