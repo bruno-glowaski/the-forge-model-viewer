@@ -21,6 +21,7 @@
 
 #include "OrbitCameraController.hpp"
 #include "RenderContext.hpp"
+#include "SkyBox.hpp"
 
 struct UniformBlock {
   CameraMatrix mModelProjectView;
@@ -70,30 +71,7 @@ public:
     sceneGDesc.pVertexLayout = &mSceneVertexLayout;
     addResource(&sceneGDesc, NULL);
 
-    for (int i = 0; i < 6; ++i) {
-      TextureLoadDesc textureDesc = {};
-      textureDesc.pFileName = kPSkyBoxImageFileNames[i];
-      textureDesc.ppTexture = &pSkyBoxTextures[i];
-      textureDesc.mCreationFlag = TEXTURE_CREATION_FLAG_SRGB;
-      addResource(&textureDesc, NULL);
-    }
-
-    SamplerDesc samplerDesc = {FILTER_LINEAR,
-                               FILTER_LINEAR,
-                               MIPMAP_MODE_NEAREST,
-                               ADDRESS_MODE_CLAMP_TO_EDGE,
-                               ADDRESS_MODE_CLAMP_TO_EDGE,
-                               ADDRESS_MODE_CLAMP_TO_EDGE};
-    pSamplerSkyBox = mRenderContext.CreateSampler(&samplerDesc);
-
-    uint64_t skyBoxDataSize = 4 * 6 * 6 * sizeof(float);
-    BufferLoadDesc skyboxVbDesc = {};
-    skyboxVbDesc.mDesc.mDescriptors = DESCRIPTOR_TYPE_VERTEX_BUFFER;
-    skyboxVbDesc.mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
-    skyboxVbDesc.mDesc.mSize = skyBoxDataSize;
-    skyboxVbDesc.pData = gSkyBoxPoints;
-    skyboxVbDesc.ppBuffer = &pSkyBoxVertexBuffer;
-    addResource(&skyboxVbDesc, NULL);
+    skyBox.LoadDefault(mRenderContext);
 
     BufferLoadDesc ubDesc = {};
     ubDesc.mDesc.mDescriptors = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -141,12 +119,7 @@ public:
     removeResource(pSceneGeometry);
     removeResource(pSceneGeometryData);
 
-    removeResource(pSkyBoxVertexBuffer);
-
-    mRenderContext.DestroySampler(pSamplerSkyBox);
-
-    for (uint i = 0; i < 6; ++i)
-      removeResource(pSkyBoxTextures[i]);
+    skyBox.Destroy(mRenderContext);
 
     mRenderContext.Exit();
   }
@@ -349,7 +322,9 @@ public:
     cmdBindPipeline(cmd, pSkyBoxDrawPipeline);
     cmdBindDescriptorSet(cmd, 0, pDescriptorSetTexture);
     cmdBindDescriptorSet(cmd, frame.index * 2 + 0, pDescriptorSetUniforms);
-    cmdBindVertexBuffer(cmd, 1, &pSkyBoxVertexBuffer, &skyboxVbStride, NULL);
+    cmdBindVertexBuffer(cmd, 1,
+                        const_cast<Buffer **>(&skyBox.GetVertexBuffer()),
+                        &skyboxVbStride, NULL);
     cmdDraw(cmd, 36, 0);
     cmdSetViewport(cmd, 0.0f, 0.0f, (float)frame.pImage->mWidth,
                    (float)frame.pImage->mHeight, 0.0f, 1.0f);
@@ -513,19 +488,19 @@ private:
     // Prepare descriptor sets
     DescriptorData params[7] = {};
     params[0].pName = "RightText";
-    params[0].ppTextures = &pSkyBoxTextures[0];
+    params[0].ppTextures = const_cast<Texture **>(&skyBox.GetTexture(0));
     params[1].pName = "LeftText";
-    params[1].ppTextures = &pSkyBoxTextures[1];
+    params[1].ppTextures = const_cast<Texture **>(&skyBox.GetTexture(1));
     params[2].pName = "TopText";
-    params[2].ppTextures = &pSkyBoxTextures[2];
+    params[2].ppTextures = const_cast<Texture **>(&skyBox.GetTexture(2));
     params[3].pName = "BotText";
-    params[3].ppTextures = &pSkyBoxTextures[3];
+    params[3].ppTextures = const_cast<Texture **>(&skyBox.GetTexture(3));
     params[4].pName = "FrontText";
-    params[4].ppTextures = &pSkyBoxTextures[4];
+    params[4].ppTextures = const_cast<Texture **>(&skyBox.GetTexture(4));
     params[5].pName = "BackText";
-    params[5].ppTextures = &pSkyBoxTextures[5];
+    params[5].ppTextures = const_cast<Texture **>(&skyBox.GetTexture(5));
     params[6].pName = "uSampler0";
-    params[6].ppSamplers = &pSamplerSkyBox;
+    params[6].ppSamplers = const_cast<Sampler **>(&skyBox.GetSampler());
     mRenderContext.UpdateDescriptorSet(pDescriptorSetTexture, 0, 7, params);
 
     for (uint32_t i = 0; i < RenderContext::kDataBufferCount; ++i) {
@@ -550,12 +525,10 @@ private:
   VertexLayout mSceneVertexLayout = {};
   uint32_t mSceneLayoutType = 0;
 
+  SkyBox skyBox;
   Shader *pSkyBoxDrawShader = NULL;
-  Buffer *pSkyBoxVertexBuffer = NULL;
   Pipeline *pSkyBoxDrawPipeline = NULL;
   RootSignature *pRootSignature = NULL;
-  Sampler *pSamplerSkyBox = NULL;
-  Texture *pSkyBoxTextures[6];
   DescriptorSet *pDescriptorSetTexture = {NULL};
   DescriptorSet *pDescriptorSetUniforms = {NULL};
 
@@ -571,44 +544,7 @@ private:
 
   uint32_t gFontID = 0;
 
-  const char *const kPSkyBoxImageFileNames[6] = {
-      "Skybox_right1.tex",  "Skybox_left2.tex",  "Skybox_top3.tex",
-      "Skybox_bottom4.tex", "Skybox_front5.tex", "Skybox_back6.tex"};
-
   FontDrawDesc gFrameTimeDraw;
-
-  // Sky box vertex buffer
-  const float gSkyBoxPoints[4 * 6 * 6] = {
-      10.0f,  -10.0f, -10.0f, 6.0f, // -z
-      -10.0f, -10.0f, -10.0f, 6.0f,   -10.0f, 10.0f,  -10.0f,
-      6.0f,   -10.0f, 10.0f,  -10.0f, 6.0f,   10.0f,  10.0f,
-      -10.0f, 6.0f,   10.0f,  -10.0f, -10.0f, 6.0f,
-
-      -10.0f, -10.0f, 10.0f,  2.0f, //-x
-      -10.0f, -10.0f, -10.0f, 2.0f,   -10.0f, 10.0f,  -10.0f,
-      2.0f,   -10.0f, 10.0f,  -10.0f, 2.0f,   -10.0f, 10.0f,
-      10.0f,  2.0f,   -10.0f, -10.0f, 10.0f,  2.0f,
-
-      10.0f,  -10.0f, -10.0f, 1.0f, //+x
-      10.0f,  -10.0f, 10.0f,  1.0f,   10.0f,  10.0f,  10.0f,
-      1.0f,   10.0f,  10.0f,  10.0f,  1.0f,   10.0f,  10.0f,
-      -10.0f, 1.0f,   10.0f,  -10.0f, -10.0f, 1.0f,
-
-      -10.0f, -10.0f, 10.0f,  5.0f, // +z
-      -10.0f, 10.0f,  10.0f,  5.0f,   10.0f,  10.0f,  10.0f,
-      5.0f,   10.0f,  10.0f,  10.0f,  5.0f,   10.0f,  -10.0f,
-      10.0f,  5.0f,   -10.0f, -10.0f, 10.0f,  5.0f,
-
-      -10.0f, 10.0f,  -10.0f, 3.0f, //+y
-      10.0f,  10.0f,  -10.0f, 3.0f,   10.0f,  10.0f,  10.0f,
-      3.0f,   10.0f,  10.0f,  10.0f,  3.0f,   -10.0f, 10.0f,
-      10.0f,  3.0f,   -10.0f, 10.0f,  -10.0f, 3.0f,
-
-      10.0f,  -10.0f, 10.0f,  4.0f, //-y
-      10.0f,  -10.0f, -10.0f, 4.0f,   -10.0f, -10.0f, -10.0f,
-      4.0f,   -10.0f, -10.0f, -10.0f, 4.0f,   -10.0f, -10.0f,
-      10.0f,  4.0f,   10.0f,  -10.0f, 10.0f,  4.0f,
-  };
 
   UIComponent *pControlsGui = NULL;
   const char *const kControlsTextCharArray = "Manual:\n"
