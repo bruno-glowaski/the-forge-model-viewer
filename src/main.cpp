@@ -34,94 +34,6 @@ struct UniformBlockSky {
   CameraMatrix mProjectView;
 };
 
-const char *const kSceneMeshPath = "castle.bin";
-Geometry *pSceneGeometry;
-GeometryData *pSceneGeometryData;
-Shader *pSceneShader = NULL;
-Pipeline *pScenePipeline = NULL;
-VertexLayout gSceneVertexLayout = {};
-uint32_t gSceneLayoutType = 0;
-
-Shader *pSkyBoxDrawShader = NULL;
-Buffer *pSkyBoxVertexBuffer = NULL;
-Pipeline *pSkyBoxDrawPipeline = NULL;
-RootSignature *pRootSignature = NULL;
-Sampler *pSamplerSkyBox = NULL;
-Texture *pSkyBoxTextures[6];
-DescriptorSet *pDescriptorSetTexture = {NULL};
-DescriptorSet *pDescriptorSetUniforms = {NULL};
-
-Buffer *pSceneUniformBuffer[RenderContext::kDataBufferCount] = {NULL};
-Buffer *pSkyboxUniformBuffer[RenderContext::kDataBufferCount] = {NULL};
-
-uint32_t gFrameIndex = 0;
-ProfileToken gGpuProfileToken = PROFILE_INVALID_TOKEN;
-
-UniformBlock gUniformData;
-UniformBlockSky gUniformDataSky;
-
-ICameraController *pCameraController = NULL;
-
-uint32_t gFontID = 0;
-
-const char *const kPSkyBoxImageFileNames[] = {
-    "Skybox_right1.tex",  "Skybox_left2.tex",  "Skybox_top3.tex",
-    "Skybox_bottom4.tex", "Skybox_front5.tex", "Skybox_back6.tex"};
-
-FontDrawDesc gFrameTimeDraw;
-
-// Generate sky box vertex buffer
-const float gSkyBoxPoints[] = {
-    10.0f,  -10.0f, -10.0f, 6.0f, // -z
-    -10.0f, -10.0f, -10.0f, 6.0f,   -10.0f, 10.0f,  -10.0f,
-    6.0f,   -10.0f, 10.0f,  -10.0f, 6.0f,   10.0f,  10.0f,
-    -10.0f, 6.0f,   10.0f,  -10.0f, -10.0f, 6.0f,
-
-    -10.0f, -10.0f, 10.0f,  2.0f, //-x
-    -10.0f, -10.0f, -10.0f, 2.0f,   -10.0f, 10.0f,  -10.0f,
-    2.0f,   -10.0f, 10.0f,  -10.0f, 2.0f,   -10.0f, 10.0f,
-    10.0f,  2.0f,   -10.0f, -10.0f, 10.0f,  2.0f,
-
-    10.0f,  -10.0f, -10.0f, 1.0f, //+x
-    10.0f,  -10.0f, 10.0f,  1.0f,   10.0f,  10.0f,  10.0f,
-    1.0f,   10.0f,  10.0f,  10.0f,  1.0f,   10.0f,  10.0f,
-    -10.0f, 1.0f,   10.0f,  -10.0f, -10.0f, 1.0f,
-
-    -10.0f, -10.0f, 10.0f,  5.0f, // +z
-    -10.0f, 10.0f,  10.0f,  5.0f,   10.0f,  10.0f,  10.0f,
-    5.0f,   10.0f,  10.0f,  10.0f,  5.0f,   10.0f,  -10.0f,
-    10.0f,  5.0f,   -10.0f, -10.0f, 10.0f,  5.0f,
-
-    -10.0f, 10.0f,  -10.0f, 3.0f, //+y
-    10.0f,  10.0f,  -10.0f, 3.0f,   10.0f,  10.0f,  10.0f,
-    3.0f,   10.0f,  10.0f,  10.0f,  3.0f,   -10.0f, 10.0f,
-    10.0f,  3.0f,   -10.0f, 10.0f,  -10.0f, 3.0f,
-
-    10.0f,  -10.0f, 10.0f,  4.0f, //-y
-    10.0f,  -10.0f, -10.0f, 4.0f,   -10.0f, -10.0f, -10.0f,
-    4.0f,   -10.0f, -10.0f, -10.0f, 4.0f,   -10.0f, -10.0f,
-    10.0f,  4.0f,   10.0f,  -10.0f, 10.0f,  4.0f,
-};
-
-UIComponent *pControlsGui = NULL;
-const char *const kControlsTextCharArray = "Manual:\n"
-                                           "W: Zoom in\n"
-                                           "S: Zoom out\n"
-                                           "A: Orbit right\n"
-                                           "D: Orbit left\n"
-                                           "Q: Orbit down\n"
-                                           "E: Orbit up\n"
-                                           "Mouse drag: Orbit around\n";
-bstring gControlsText = bfromarr(kControlsTextCharArray);
-
-static float gCameraAcceleration = 600.0f;
-float gCameraBraking = 200.0f;
-float gCameraZoomSpeed = 1.0f;
-float gCameraOrbitSpeed = 1.0f;
-
-UIComponent *pSceneGui = NULL;
-float gSceneScale = 1.0f;
-
 class ModelViewer : public IApp {
 public:
   bool Init() {
@@ -132,30 +44,30 @@ public:
     }
 
     // Load scene
-    gSceneVertexLayout.mAttribCount = 3;
-    gSceneVertexLayout.mBindingCount = 1;
-    gSceneVertexLayout.mBindings[0].mStride =
+    mSceneVertexLayout.mAttribCount = 3;
+    mSceneVertexLayout.mBindingCount = 1;
+    mSceneVertexLayout.mBindings[0].mStride =
         sizeof(float3) + sizeof(uint32_t) + sizeof(float);
-    gSceneVertexLayout.mAttribs[0].mSemantic = SEMANTIC_POSITION;
-    gSceneVertexLayout.mAttribs[0].mFormat = TinyImageFormat_R32G32B32_SFLOAT;
-    gSceneVertexLayout.mAttribs[0].mLocation = 0;
-    gSceneVertexLayout.mAttribs[0].mOffset = 0;
-    gSceneVertexLayout.mAttribs[0].mBinding = 0;
-    gSceneVertexLayout.mAttribs[1].mSemantic = SEMANTIC_NORMAL;
-    gSceneVertexLayout.mAttribs[1].mFormat = TinyImageFormat_R32_UINT;
-    gSceneVertexLayout.mAttribs[1].mLocation = 1;
-    gSceneVertexLayout.mAttribs[1].mOffset = 3 * sizeof(float);
-    gSceneVertexLayout.mAttribs[1].mBinding = 0;
-    gSceneVertexLayout.mAttribs[2].mSemantic = SEMANTIC_TEXCOORD0;
-    gSceneVertexLayout.mAttribs[2].mFormat = TinyImageFormat_R16G16_SFLOAT;
-    gSceneVertexLayout.mAttribs[2].mLocation = 2;
-    gSceneVertexLayout.mAttribs[2].mOffset = sizeof(float3) + sizeof(uint32_t);
-    gSceneVertexLayout.mAttribs[2].mBinding = 0;
+    mSceneVertexLayout.mAttribs[0].mSemantic = SEMANTIC_POSITION;
+    mSceneVertexLayout.mAttribs[0].mFormat = TinyImageFormat_R32G32B32_SFLOAT;
+    mSceneVertexLayout.mAttribs[0].mLocation = 0;
+    mSceneVertexLayout.mAttribs[0].mOffset = 0;
+    mSceneVertexLayout.mAttribs[0].mBinding = 0;
+    mSceneVertexLayout.mAttribs[1].mSemantic = SEMANTIC_NORMAL;
+    mSceneVertexLayout.mAttribs[1].mFormat = TinyImageFormat_R32_UINT;
+    mSceneVertexLayout.mAttribs[1].mLocation = 1;
+    mSceneVertexLayout.mAttribs[1].mOffset = 3 * sizeof(float);
+    mSceneVertexLayout.mAttribs[1].mBinding = 0;
+    mSceneVertexLayout.mAttribs[2].mSemantic = SEMANTIC_TEXCOORD0;
+    mSceneVertexLayout.mAttribs[2].mFormat = TinyImageFormat_R16G16_SFLOAT;
+    mSceneVertexLayout.mAttribs[2].mLocation = 2;
+    mSceneVertexLayout.mAttribs[2].mOffset = sizeof(float3) + sizeof(uint32_t);
+    mSceneVertexLayout.mAttribs[2].mBinding = 0;
     GeometryLoadDesc sceneGDesc = {};
     sceneGDesc.ppGeometry = &pSceneGeometry;
     sceneGDesc.ppGeometryData = &pSceneGeometryData;
     sceneGDesc.pFileName = kSceneMeshPath;
-    sceneGDesc.pVertexLayout = &gSceneVertexLayout;
+    sceneGDesc.pVertexLayout = &mSceneVertexLayout;
     addResource(&sceneGDesc, NULL);
 
     for (int i = 0; i < 6; ++i) {
@@ -204,7 +116,7 @@ public:
     fntDefineFonts(&font, 1, &gFontID);
 
     // Gpu profiler can only be added after initProfile.
-    gGpuProfileToken = mRenderContext.CreateGpuProfiler("Graphics");
+    mGpuProfileToken = mRenderContext.CreateGpuProfiler("Graphics");
 
     waitForAllResourceLoads();
 
@@ -214,7 +126,7 @@ public:
     pCameraController = initOrbitCameraController(camPos, lookAt);
 
     AddCustomInputBindings();
-    gFrameIndex = 0;
+    mFrameIndex = 0;
 
     return true;
   }
@@ -267,7 +179,7 @@ public:
       cameraAccelerationWidget.mMin = 0.0f;
       cameraAccelerationWidget.mMax = 1000.0f;
       cameraAccelerationWidget.mStep = 1.0f;
-      cameraAccelerationWidget.pData = &gCameraAcceleration;
+      cameraAccelerationWidget.pData = &mCameraAcceleration;
       uiAddComponentWidget(pControlsGui, "Camera Acceleration",
                            &cameraAccelerationWidget, WIDGET_TYPE_SLIDER_FLOAT);
 
@@ -275,7 +187,7 @@ public:
       cameraBrakingWidget.mMin = 0.0f;
       cameraBrakingWidget.mMax = 1000.0f;
       cameraBrakingWidget.mStep = 1.0f;
-      cameraBrakingWidget.pData = &gCameraBraking;
+      cameraBrakingWidget.pData = &mCameraBraking;
       uiAddComponentWidget(pControlsGui, "Camera Braking", &cameraBrakingWidget,
                            WIDGET_TYPE_SLIDER_FLOAT);
 
@@ -283,7 +195,7 @@ public:
       cameraZoomSpeedWidget.mMin = 0.0f;
       cameraZoomSpeedWidget.mMax = 1000.0f;
       cameraZoomSpeedWidget.mStep = 1.0f;
-      cameraZoomSpeedWidget.pData = &gCameraZoomSpeed;
+      cameraZoomSpeedWidget.pData = &mCameraZoomSpeed;
       uiAddComponentWidget(pControlsGui, "Zoom Speed", &cameraZoomSpeedWidget,
                            WIDGET_TYPE_SLIDER_FLOAT);
 
@@ -291,7 +203,7 @@ public:
       cameraOrbitSpeedWidget.mMin = 0.0f;
       cameraOrbitSpeedWidget.mMax = 1000.0f;
       cameraOrbitSpeedWidget.mStep = 1.0f;
-      cameraOrbitSpeedWidget.pData = &gCameraOrbitSpeed;
+      cameraOrbitSpeedWidget.pData = &mCameraOrbitSpeed;
       uiAddComponentWidget(pControlsGui, "Orbit Speed", &cameraOrbitSpeedWidget,
                            WIDGET_TYPE_SLIDER_FLOAT);
 
@@ -342,10 +254,10 @@ public:
   void Update(float deltaTime) {
     if (!uiIsFocused()) {
       CameraMotionParameters cmp{{},
-                                 gCameraAcceleration,
-                                 gCameraBraking,
-                                 gCameraZoomSpeed,
-                                 gCameraOrbitSpeed};
+                                 mCameraAcceleration,
+                                 mCameraBraking,
+                                 mCameraZoomSpeed,
+                                 mCameraOrbitSpeed};
       pCameraController->setMotionParameters(cmp);
 
       pCameraController->onMove(
@@ -388,39 +300,39 @@ public:
     CameraMatrix projMat = CameraMatrix::perspectiveReverseZ(
         horizontal_fov, aspectInverse, 0.1f, 1000.0f);
     mat4 modelMat = mat4::scale(vec3(gSceneScale));
-    gUniformData.mModelProjectView = projMat * viewMat * modelMat;
+    mUniformData.mModelProjectView = projMat * viewMat * modelMat;
 
     // point light parameters
-    gUniformData.mLightPosition = vec4(0, 0, 0, 0);
-    gUniformData.mLightColor = vec4(0.9f, 0.9f, 0.7f, 1.0f); // Pale Yellow
+    mUniformData.mLightPosition = vec4(0, 0, 0, 0);
+    mUniformData.mLightColor = vec4(0.9f, 0.9f, 0.7f, 1.0f); // Pale Yellow
 
     viewMat.setTranslation(vec3(0));
-    gUniformDataSky = {};
-    gUniformDataSky.mProjectView = projMat * viewMat;
+    mUniformDataSky = {};
+    mUniformDataSky.mProjectView = projMat * viewMat;
 
     RenderContext::Frame frame = mRenderContext.BeginFrame();
 
     // Update uniform buffers
-    BufferUpdateDesc viewProjCbv = {pSceneUniformBuffer[gFrameIndex]};
+    BufferUpdateDesc viewProjCbv = {pSceneUniformBuffer[mFrameIndex]};
     beginUpdateResource(&viewProjCbv);
-    memcpy(viewProjCbv.pMappedData, &gUniformData, sizeof(gUniformData));
+    memcpy(viewProjCbv.pMappedData, &mUniformData, sizeof(mUniformData));
     endUpdateResource(&viewProjCbv);
 
-    BufferUpdateDesc skyboxViewProjCbv = {pSkyboxUniformBuffer[gFrameIndex]};
+    BufferUpdateDesc skyboxViewProjCbv = {pSkyboxUniformBuffer[mFrameIndex]};
     beginUpdateResource(&skyboxViewProjCbv);
-    memcpy(skyboxViewProjCbv.pMappedData, &gUniformDataSky,
-           sizeof(gUniformDataSky));
+    memcpy(skyboxViewProjCbv.pMappedData, &mUniformDataSky,
+           sizeof(mUniformDataSky));
     endUpdateResource(&skyboxViewProjCbv);
 
     Cmd *cmd = frame.mCmdRingElement.pCmds[0];
-    cmdBeginGpuFrameProfile(cmd, gGpuProfileToken);
+    cmdBeginGpuFrameProfile(cmd, mGpuProfileToken);
 
     RenderTargetBarrier barriers[] = {
         {frame.pImage, RESOURCE_STATE_PRESENT, RESOURCE_STATE_RENDER_TARGET},
     };
     cmdResourceBarrier(cmd, 0, NULL, 0, NULL, 1, barriers);
 
-    cmdBeginGpuTimestampQuery(cmd, gGpuProfileToken, "Draw Canvas");
+    cmdBeginGpuTimestampQuery(cmd, mGpuProfileToken, "Draw Canvas");
 
     // simply record the screen cleaning command
     BindRenderTargetsDesc bindRenderTargets = {};
@@ -434,32 +346,32 @@ public:
 
     const uint32_t skyboxVbStride = sizeof(float) * 4;
     // draw skybox
-    cmdBeginGpuTimestampQuery(cmd, gGpuProfileToken, "Draw Skybox");
+    cmdBeginGpuTimestampQuery(cmd, mGpuProfileToken, "Draw Skybox");
     cmdSetViewport(cmd, 0.0f, 0.0f, (float)frame.pImage->mWidth,
                    (float)frame.pImage->mHeight, 1.0f, 1.0f);
     cmdBindPipeline(cmd, pSkyBoxDrawPipeline);
     cmdBindDescriptorSet(cmd, 0, pDescriptorSetTexture);
-    cmdBindDescriptorSet(cmd, gFrameIndex * 2 + 0, pDescriptorSetUniforms);
+    cmdBindDescriptorSet(cmd, mFrameIndex * 2 + 0, pDescriptorSetUniforms);
     cmdBindVertexBuffer(cmd, 1, &pSkyBoxVertexBuffer, &skyboxVbStride, NULL);
     cmdDraw(cmd, 36, 0);
     cmdSetViewport(cmd, 0.0f, 0.0f, (float)frame.pImage->mWidth,
                    (float)frame.pImage->mHeight, 0.0f, 1.0f);
-    cmdEndGpuTimestampQuery(cmd, gGpuProfileToken);
+    cmdEndGpuTimestampQuery(cmd, mGpuProfileToken);
 
-    cmdBeginGpuTimestampQuery(cmd, gGpuProfileToken, "Draw Scene");
+    cmdBeginGpuTimestampQuery(cmd, mGpuProfileToken, "Draw Scene");
     cmdBindPipeline(cmd, pScenePipeline);
-    cmdBindDescriptorSet(cmd, gFrameIndex * 2 + 1, pDescriptorSetUniforms);
+    cmdBindDescriptorSet(cmd, mFrameIndex * 2 + 1, pDescriptorSetUniforms);
     cmdBindVertexBuffer(cmd, pSceneGeometry->mVertexBufferCount,
                         pSceneGeometry->pVertexBuffers,
-                        &gSceneVertexLayout.mBindings[0].mStride, nullptr);
+                        &mSceneVertexLayout.mBindings[0].mStride, nullptr);
     cmdBindIndexBuffer(cmd, pSceneGeometry->pIndexBuffer, INDEX_TYPE_UINT16, 0);
     cmdDrawIndexed(cmd, pSceneGeometry->mIndexCount, 0, 0);
-    cmdEndGpuTimestampQuery(cmd, gGpuProfileToken);
+    cmdEndGpuTimestampQuery(cmd, mGpuProfileToken);
 
-    cmdEndGpuTimestampQuery(cmd, gGpuProfileToken); // Draw Canvas
+    cmdEndGpuTimestampQuery(cmd, mGpuProfileToken); // Draw Canvas
     cmdBindRenderTargets(cmd, NULL);
 
-    cmdBeginGpuTimestampQuery(cmd, gGpuProfileToken, "Draw UI");
+    cmdBeginGpuTimestampQuery(cmd, mGpuProfileToken, "Draw UI");
 
     bindRenderTargets = {};
     bindRenderTargets.mRenderTargetCount = 1;
@@ -472,19 +384,19 @@ public:
     gFrameTimeDraw.mFontID = gFontID;
     float2 txtSizePx =
         cmdDrawCpuProfile(cmd, float2(8.f, 15.f), &gFrameTimeDraw);
-    cmdDrawGpuProfile(cmd, float2(8.f, txtSizePx.y + 75.f), gGpuProfileToken,
+    cmdDrawGpuProfile(cmd, float2(8.f, txtSizePx.y + 75.f), mGpuProfileToken,
                       &gFrameTimeDraw);
 
     cmdDrawUserInterface(cmd);
 
-    cmdEndGpuTimestampQuery(cmd, gGpuProfileToken);
+    cmdEndGpuTimestampQuery(cmd, mGpuProfileToken);
     cmdBindRenderTargets(cmd, NULL);
 
     barriers[0] = {frame.pImage, RESOURCE_STATE_RENDER_TARGET,
                    RESOURCE_STATE_PRESENT};
     cmdResourceBarrier(cmd, 0, NULL, 0, NULL, 1, barriers);
 
-    cmdEndGpuFrameProfile(cmd, gGpuProfileToken);
+    cmdEndGpuFrameProfile(cmd, mGpuProfileToken);
 
     mRenderContext.EndFrame(std::move(frame));
   }
@@ -572,7 +484,7 @@ private:
     pipelineSettings.mDepthStencilFormat = mRenderContext.GetDepthFormat();
     pipelineSettings.pRootSignature = pRootSignature;
     pipelineSettings.pShaderProgram = pSceneShader;
-    pipelineSettings.pVertexLayout = &gSceneVertexLayout;
+    pipelineSettings.pVertexLayout = &mSceneVertexLayout;
     pipelineSettings.pRasterizerState = &sceneRasterizerStateDesc;
     pipelineSettings.mVRFoveatedRendering = true;
     pScenePipeline = mRenderContext.CreatePipeline(&desc);
@@ -632,6 +544,94 @@ private:
                                          uParams);
     }
   }
+
+  const char *const kSceneMeshPath = "castle.bin";
+  Geometry *pSceneGeometry;
+  GeometryData *pSceneGeometryData;
+  Shader *pSceneShader = NULL;
+  Pipeline *pScenePipeline = NULL;
+  VertexLayout mSceneVertexLayout = {};
+  uint32_t mSceneLayoutType = 0;
+
+  Shader *pSkyBoxDrawShader = NULL;
+  Buffer *pSkyBoxVertexBuffer = NULL;
+  Pipeline *pSkyBoxDrawPipeline = NULL;
+  RootSignature *pRootSignature = NULL;
+  Sampler *pSamplerSkyBox = NULL;
+  Texture *pSkyBoxTextures[6];
+  DescriptorSet *pDescriptorSetTexture = {NULL};
+  DescriptorSet *pDescriptorSetUniforms = {NULL};
+
+  Buffer *pSceneUniformBuffer[RenderContext::kDataBufferCount] = {NULL};
+  Buffer *pSkyboxUniformBuffer[RenderContext::kDataBufferCount] = {NULL};
+
+  uint32_t mFrameIndex = 0;
+  ProfileToken mGpuProfileToken = PROFILE_INVALID_TOKEN;
+
+  UniformBlock mUniformData;
+  UniformBlockSky mUniformDataSky;
+
+  ICameraController *pCameraController = NULL;
+
+  uint32_t gFontID = 0;
+
+  const char *const kPSkyBoxImageFileNames[6] = {
+      "Skybox_right1.tex",  "Skybox_left2.tex",  "Skybox_top3.tex",
+      "Skybox_bottom4.tex", "Skybox_front5.tex", "Skybox_back6.tex"};
+
+  FontDrawDesc gFrameTimeDraw;
+
+  // Generate sky box vertex buffer
+  const float gSkyBoxPoints[4 * 6 * 6] = {
+      10.0f,  -10.0f, -10.0f, 6.0f, // -z
+      -10.0f, -10.0f, -10.0f, 6.0f,   -10.0f, 10.0f,  -10.0f,
+      6.0f,   -10.0f, 10.0f,  -10.0f, 6.0f,   10.0f,  10.0f,
+      -10.0f, 6.0f,   10.0f,  -10.0f, -10.0f, 6.0f,
+
+      -10.0f, -10.0f, 10.0f,  2.0f, //-x
+      -10.0f, -10.0f, -10.0f, 2.0f,   -10.0f, 10.0f,  -10.0f,
+      2.0f,   -10.0f, 10.0f,  -10.0f, 2.0f,   -10.0f, 10.0f,
+      10.0f,  2.0f,   -10.0f, -10.0f, 10.0f,  2.0f,
+
+      10.0f,  -10.0f, -10.0f, 1.0f, //+x
+      10.0f,  -10.0f, 10.0f,  1.0f,   10.0f,  10.0f,  10.0f,
+      1.0f,   10.0f,  10.0f,  10.0f,  1.0f,   10.0f,  10.0f,
+      -10.0f, 1.0f,   10.0f,  -10.0f, -10.0f, 1.0f,
+
+      -10.0f, -10.0f, 10.0f,  5.0f, // +z
+      -10.0f, 10.0f,  10.0f,  5.0f,   10.0f,  10.0f,  10.0f,
+      5.0f,   10.0f,  10.0f,  10.0f,  5.0f,   10.0f,  -10.0f,
+      10.0f,  5.0f,   -10.0f, -10.0f, 10.0f,  5.0f,
+
+      -10.0f, 10.0f,  -10.0f, 3.0f, //+y
+      10.0f,  10.0f,  -10.0f, 3.0f,   10.0f,  10.0f,  10.0f,
+      3.0f,   10.0f,  10.0f,  10.0f,  3.0f,   -10.0f, 10.0f,
+      10.0f,  3.0f,   -10.0f, 10.0f,  -10.0f, 3.0f,
+
+      10.0f,  -10.0f, 10.0f,  4.0f, //-y
+      10.0f,  -10.0f, -10.0f, 4.0f,   -10.0f, -10.0f, -10.0f,
+      4.0f,   -10.0f, -10.0f, -10.0f, 4.0f,   -10.0f, -10.0f,
+      10.0f,  4.0f,   10.0f,  -10.0f, 10.0f,  4.0f,
+  };
+
+  UIComponent *pControlsGui = NULL;
+  const char *const kControlsTextCharArray = "Manual:\n"
+                                             "W: Zoom in\n"
+                                             "S: Zoom out\n"
+                                             "A: Orbit right\n"
+                                             "D: Orbit left\n"
+                                             "Q: Orbit down\n"
+                                             "E: Orbit up\n"
+                                             "Mouse drag: Orbit around\n";
+  bstring gControlsText = bfromarr(kControlsTextCharArray);
+
+  float mCameraAcceleration = 600.0f;
+  float mCameraBraking = 200.0f;
+  float mCameraZoomSpeed = 1.0f;
+  float mCameraOrbitSpeed = 1.0f;
+
+  UIComponent *pSceneGui = NULL;
+  float gSceneScale = 1.0f;
 };
 
 DEFINE_APPLICATION_MAIN(ModelViewer)
