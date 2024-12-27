@@ -126,7 +126,6 @@ public:
     pCameraController = initOrbitCameraController(camPos, lookAt);
 
     AddCustomInputBindings();
-    mFrameIndex = 0;
 
     return true;
   }
@@ -313,12 +312,12 @@ public:
     RenderContext::Frame frame = mRenderContext.BeginFrame();
 
     // Update uniform buffers
-    BufferUpdateDesc viewProjCbv = {pSceneUniformBuffer[mFrameIndex]};
+    BufferUpdateDesc viewProjCbv = {pSceneUniformBuffer[frame.index]};
     beginUpdateResource(&viewProjCbv);
     memcpy(viewProjCbv.pMappedData, &mUniformData, sizeof(mUniformData));
     endUpdateResource(&viewProjCbv);
 
-    BufferUpdateDesc skyboxViewProjCbv = {pSkyboxUniformBuffer[mFrameIndex]};
+    BufferUpdateDesc skyboxViewProjCbv = {pSkyboxUniformBuffer[frame.index]};
     beginUpdateResource(&skyboxViewProjCbv);
     memcpy(skyboxViewProjCbv.pMappedData, &mUniformDataSky,
            sizeof(mUniformDataSky));
@@ -351,7 +350,7 @@ public:
                    (float)frame.pImage->mHeight, 1.0f, 1.0f);
     cmdBindPipeline(cmd, pSkyBoxDrawPipeline);
     cmdBindDescriptorSet(cmd, 0, pDescriptorSetTexture);
-    cmdBindDescriptorSet(cmd, mFrameIndex * 2 + 0, pDescriptorSetUniforms);
+    cmdBindDescriptorSet(cmd, frame.index * 2 + 0, pDescriptorSetUniforms);
     cmdBindVertexBuffer(cmd, 1, &pSkyBoxVertexBuffer, &skyboxVbStride, NULL);
     cmdDraw(cmd, 36, 0);
     cmdSetViewport(cmd, 0.0f, 0.0f, (float)frame.pImage->mWidth,
@@ -360,7 +359,7 @@ public:
 
     cmdBeginGpuTimestampQuery(cmd, mGpuProfileToken, "Draw Scene");
     cmdBindPipeline(cmd, pScenePipeline);
-    cmdBindDescriptorSet(cmd, mFrameIndex * 2 + 1, pDescriptorSetUniforms);
+    cmdBindDescriptorSet(cmd, frame.index * 2 + 1, pDescriptorSetUniforms);
     cmdBindVertexBuffer(cmd, pSceneGeometry->mVertexBufferCount,
                         pSceneGeometry->pVertexBuffers,
                         &mSceneVertexLayout.mBindings[0].mStride, nullptr);
@@ -565,7 +564,6 @@ private:
   Buffer *pSceneUniformBuffer[RenderContext::kDataBufferCount] = {NULL};
   Buffer *pSkyboxUniformBuffer[RenderContext::kDataBufferCount] = {NULL};
 
-  uint32_t mFrameIndex = 0;
   ProfileToken mGpuProfileToken = PROFILE_INVALID_TOKEN;
 
   UniformBlock mUniformData;
@@ -581,7 +579,7 @@ private:
 
   FontDrawDesc gFrameTimeDraw;
 
-  // Generate sky box vertex buffer
+  // Sky box vertex buffer
   const float gSkyBoxPoints[4 * 6 * 6] = {
       10.0f,  -10.0f, -10.0f, 6.0f, // -z
       -10.0f, -10.0f, -10.0f, 6.0f,   -10.0f, 10.0f,  -10.0f,

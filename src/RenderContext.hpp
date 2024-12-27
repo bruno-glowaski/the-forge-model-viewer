@@ -53,7 +53,7 @@ public:
   void DestroyPipeline(Pipeline *pPipeline);
 
   struct Frame {
-    uint32_t frameIndex;
+    uint32_t index;
     uint32_t imageIndex;
     RenderTarget *pImage;
     RenderTarget *pDepthBuffer;
