@@ -19,8 +19,8 @@
 #include "Utilities/Interfaces/IMemory.h"
 #include "Utilities/Math/MathTypes.h"
 
-#include "RenderContext.hpp"
 #include "OrbitCameraController.hpp"
+#include "RenderContext.hpp"
 
 struct UniformBlock {
   CameraMatrix mModelProjectView;
@@ -103,15 +103,15 @@ const float gSkyBoxPoints[] = {
     10.0f,  4.0f,   10.0f,  -10.0f, 10.0f,  4.0f,
 };
 
-UIComponent* pControlsGui = NULL;
-const char* const kControlsTextCharArray = "Manual:\n"
-"W: Zoom in\n"
-"S: Zoom out\n"
-"A: Orbit right\n"
-"D: Orbit left\n"
-"Q: Orbit down\n"
-"E: Orbit up\n"
-"Mouse drag: Orbit around\n";
+UIComponent *pControlsGui = NULL;
+const char *const kControlsTextCharArray = "Manual:\n"
+                                           "W: Zoom in\n"
+                                           "S: Zoom out\n"
+                                           "A: Orbit right\n"
+                                           "D: Orbit left\n"
+                                           "Q: Orbit down\n"
+                                           "E: Orbit up\n"
+                                           "Mouse drag: Orbit around\n";
 bstring gControlsText = bfromarr(kControlsTextCharArray);
 
 static float gCameraAcceleration = 600.0f;
@@ -119,7 +119,7 @@ float gCameraBraking = 200.0f;
 float gCameraZoomSpeed = 1.0f;
 float gCameraOrbitSpeed = 1.0f;
 
-UIComponent* pSceneGui = NULL;
+UIComponent *pSceneGui = NULL;
 float gSceneScale = 1.0f;
 
 class ModelViewer : public IApp {
@@ -127,14 +127,15 @@ public:
   bool Init() {
     // window and renderer setup
     if (!mRenderContext.Init(GetName())) {
-        ShowUnsupportedMessage("Failed To Initialize renderer!");
-        return false;
+      ShowUnsupportedMessage("Failed To Initialize renderer!");
+      return false;
     }
 
     // Load scene
     gSceneVertexLayout.mAttribCount = 3;
     gSceneVertexLayout.mBindingCount = 1;
-    gSceneVertexLayout.mBindings[0].mStride = sizeof(float3) + sizeof(uint32_t) + sizeof(float);
+    gSceneVertexLayout.mBindings[0].mStride =
+        sizeof(float3) + sizeof(uint32_t) + sizeof(float);
     gSceneVertexLayout.mAttribs[0].mSemantic = SEMANTIC_POSITION;
     gSceneVertexLayout.mAttribs[0].mFormat = TinyImageFormat_R32G32B32_SFLOAT;
     gSceneVertexLayout.mAttribs[0].mLocation = 0;
@@ -240,8 +241,8 @@ public:
   }
 
   bool Load(ReloadDesc *pReloadDesc) {
-    mRenderContext.Load(pWindow->handle, mSettings.mWidth, mSettings.mHeight, 
-        mSettings.mVSyncEnabled, pReloadDesc);
+    mRenderContext.Load(pWindow->handle, mSettings.mWidth, mSettings.mHeight,
+                        mSettings.mVSyncEnabled, pReloadDesc);
 
     if (pReloadDesc->mType & RELOAD_TYPE_SHADER) {
       addShaders();
@@ -251,45 +252,52 @@ public:
 
     if (pReloadDesc->mType & (RELOAD_TYPE_RESIZE | RELOAD_TYPE_RENDERTARGET)) {
       UIComponentDesc constrolsGuiDesc{};
-      constrolsGuiDesc.mStartPosition = vec2(mSettings.mWidth * 0.01f, mSettings.mHeight * 0.01f);
+      constrolsGuiDesc.mStartPosition =
+          vec2(mSettings.mWidth * 0.01f, mSettings.mHeight * 0.01f);
       uiAddComponent("Controls", &constrolsGuiDesc, &pControlsGui);
 
-      static float4 color = { 1.0f, 1.0f, 1.0f, 0.75f };
+      static float4 color = {1.0f, 1.0f, 1.0f, 0.75f};
       DynamicTextWidget controlsManualWidget;
       controlsManualWidget.pText = &gControlsText;
       controlsManualWidget.pColor = &color;
-      uiAddComponentWidget(pControlsGui, "Manual", &controlsManualWidget, WIDGET_TYPE_DYNAMIC_TEXT);
+      uiAddComponentWidget(pControlsGui, "Manual", &controlsManualWidget,
+                           WIDGET_TYPE_DYNAMIC_TEXT);
 
       SliderFloatWidget cameraAccelerationWidget;
       cameraAccelerationWidget.mMin = 0.0f;
       cameraAccelerationWidget.mMax = 1000.0f;
       cameraAccelerationWidget.mStep = 1.0f;
       cameraAccelerationWidget.pData = &gCameraAcceleration;
-      uiAddComponentWidget(pControlsGui, "Camera Acceleration", &cameraAccelerationWidget, WIDGET_TYPE_SLIDER_FLOAT);
+      uiAddComponentWidget(pControlsGui, "Camera Acceleration",
+                           &cameraAccelerationWidget, WIDGET_TYPE_SLIDER_FLOAT);
 
       SliderFloatWidget cameraBrakingWidget;
       cameraBrakingWidget.mMin = 0.0f;
       cameraBrakingWidget.mMax = 1000.0f;
       cameraBrakingWidget.mStep = 1.0f;
       cameraBrakingWidget.pData = &gCameraBraking;
-      uiAddComponentWidget(pControlsGui, "Camera Braking", &cameraBrakingWidget, WIDGET_TYPE_SLIDER_FLOAT);
+      uiAddComponentWidget(pControlsGui, "Camera Braking", &cameraBrakingWidget,
+                           WIDGET_TYPE_SLIDER_FLOAT);
 
       SliderFloatWidget cameraZoomSpeedWidget;
       cameraZoomSpeedWidget.mMin = 0.0f;
       cameraZoomSpeedWidget.mMax = 1000.0f;
       cameraZoomSpeedWidget.mStep = 1.0f;
       cameraZoomSpeedWidget.pData = &gCameraZoomSpeed;
-      uiAddComponentWidget(pControlsGui, "Zoom Speed", &cameraZoomSpeedWidget, WIDGET_TYPE_SLIDER_FLOAT);
+      uiAddComponentWidget(pControlsGui, "Zoom Speed", &cameraZoomSpeedWidget,
+                           WIDGET_TYPE_SLIDER_FLOAT);
 
       SliderFloatWidget cameraOrbitSpeedWidget;
       cameraOrbitSpeedWidget.mMin = 0.0f;
       cameraOrbitSpeedWidget.mMax = 1000.0f;
       cameraOrbitSpeedWidget.mStep = 1.0f;
       cameraOrbitSpeedWidget.pData = &gCameraOrbitSpeed;
-      uiAddComponentWidget(pControlsGui, "Orbit Speed", &cameraOrbitSpeedWidget, WIDGET_TYPE_SLIDER_FLOAT);
+      uiAddComponentWidget(pControlsGui, "Orbit Speed", &cameraOrbitSpeedWidget,
+                           WIDGET_TYPE_SLIDER_FLOAT);
 
       UIComponentDesc sceneGuiDesc{};
-      sceneGuiDesc.mStartPosition = vec2(mSettings.mWidth * 0.01f, mSettings.mHeight * 0.87f);
+      sceneGuiDesc.mStartPosition =
+          vec2(mSettings.mWidth * 0.01f, mSettings.mHeight * 0.87f);
       uiAddComponent("Scene", &sceneGuiDesc, &pSceneGui);
 
       SliderFloatWidget sceneScaleWidget;
@@ -297,7 +305,8 @@ public:
       sceneScaleWidget.mMax = 100.0f;
       sceneScaleWidget.mStep = 0.1f;
       sceneScaleWidget.pData = &gSceneScale;
-      uiAddComponentWidget(pSceneGui, "Scale", &sceneScaleWidget, WIDGET_TYPE_SLIDER_FLOAT);
+      uiAddComponentWidget(pSceneGui, "Scale", &sceneScaleWidget,
+                           WIDGET_TYPE_SLIDER_FLOAT);
     }
 
     if (pReloadDesc->mType & (RELOAD_TYPE_SHADER | RELOAD_TYPE_RENDERTARGET)) {
@@ -332,7 +341,11 @@ public:
 
   void Update(float deltaTime) {
     if (!uiIsFocused()) {
-      CameraMotionParameters cmp{ {}, gCameraAcceleration, gCameraBraking, gCameraZoomSpeed, gCameraOrbitSpeed };
+      CameraMotionParameters cmp{{},
+                                 gCameraAcceleration,
+                                 gCameraBraking,
+                                 gCameraZoomSpeed,
+                                 gCameraOrbitSpeed};
       pCameraController->setMotionParameters(cmp);
 
       pCameraController->onMove(
@@ -404,7 +417,7 @@ public:
            sizeof(gUniformDataSky));
     endUpdateResource(&skyboxViewProjCbv);
 
-    Cmd* cmd = frame.mCmdRingElement.pCmds[0];
+    Cmd *cmd = frame.mCmdRingElement.pCmds[0];
     cmdBeginGpuFrameProfile(cmd, gGpuProfileToken);
 
     RenderTargetBarrier barriers[] = {
@@ -455,7 +468,7 @@ public:
 
     bindRenderTargets = {};
     bindRenderTargets.mRenderTargetCount = 1;
-    bindRenderTargets.mRenderTargets[0] = { frame.pImage, LOAD_ACTION_LOAD};
+    bindRenderTargets.mRenderTargets[0] = {frame.pImage, LOAD_ACTION_LOAD};
     bindRenderTargets.mDepthStencil = {NULL, LOAD_ACTION_DONTCARE};
     cmdBindRenderTargets(cmd, &bindRenderTargets);
 
@@ -472,7 +485,7 @@ public:
     cmdEndGpuTimestampQuery(cmd, gGpuProfileToken);
     cmdBindRenderTargets(cmd, NULL);
 
-    barriers[0] = { frame.pImage, RESOURCE_STATE_RENDER_TARGET,
+    barriers[0] = {frame.pImage, RESOURCE_STATE_RENDER_TARGET,
                    RESOURCE_STATE_PRESENT};
     cmdResourceBarrier(cmd, 0, NULL, 0, NULL, 1, barriers);
 
@@ -558,8 +571,7 @@ private:
     pipelineSettings.mRenderTargetCount = 1;
     pipelineSettings.pDepthState = &depthStateDesc;
     pipelineSettings.pColorFormats = &swapChainFormat;
-    pipelineSettings.mSampleCount =
-        mRenderContext.GetSwapChainSampleCount();
+    pipelineSettings.mSampleCount = mRenderContext.GetSwapChainSampleCount();
     pipelineSettings.mSampleQuality =
         mRenderContext.GetSwapChainSampleQuality();
     pipelineSettings.mDepthStencilFormat = mRenderContext.GetDepthFormat();
@@ -617,12 +629,12 @@ private:
       uParams[0].pName = "uniformBlock";
       uParams[0].ppBuffers = &pSkyboxUniformBuffer[i];
       mRenderContext.UpdateDescriptorSet(pDescriptorSetUniforms, i * 2 + 0, 1,
-                          uParams);
+                                         uParams);
 
       uParams[0].pName = "uniformBlock";
       uParams[0].ppBuffers = &pSceneUniformBuffer[i];
       mRenderContext.UpdateDescriptorSet(pDescriptorSetUniforms, i * 2 + 1, 1,
-                          uParams);
+                                         uParams);
     }
   }
 };
