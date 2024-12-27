@@ -21,6 +21,7 @@
 
 #include "OrbitCameraController.hpp"
 #include "RenderContext.hpp"
+#include "Scene.hpp"
 #include "SkyBox.hpp"
 
 struct UniformBlock {
@@ -44,34 +45,8 @@ public:
       return false;
     }
 
-    // Load scene
-    mSceneVertexLayout.mAttribCount = 3;
-    mSceneVertexLayout.mBindingCount = 1;
-    mSceneVertexLayout.mBindings[0].mStride =
-        sizeof(float3) + sizeof(uint32_t) + sizeof(float);
-    mSceneVertexLayout.mAttribs[0].mSemantic = SEMANTIC_POSITION;
-    mSceneVertexLayout.mAttribs[0].mFormat = TinyImageFormat_R32G32B32_SFLOAT;
-    mSceneVertexLayout.mAttribs[0].mLocation = 0;
-    mSceneVertexLayout.mAttribs[0].mOffset = 0;
-    mSceneVertexLayout.mAttribs[0].mBinding = 0;
-    mSceneVertexLayout.mAttribs[1].mSemantic = SEMANTIC_NORMAL;
-    mSceneVertexLayout.mAttribs[1].mFormat = TinyImageFormat_R32_UINT;
-    mSceneVertexLayout.mAttribs[1].mLocation = 1;
-    mSceneVertexLayout.mAttribs[1].mOffset = 3 * sizeof(float);
-    mSceneVertexLayout.mAttribs[1].mBinding = 0;
-    mSceneVertexLayout.mAttribs[2].mSemantic = SEMANTIC_TEXCOORD0;
-    mSceneVertexLayout.mAttribs[2].mFormat = TinyImageFormat_R16G16_SFLOAT;
-    mSceneVertexLayout.mAttribs[2].mLocation = 2;
-    mSceneVertexLayout.mAttribs[2].mOffset = sizeof(float3) + sizeof(uint32_t);
-    mSceneVertexLayout.mAttribs[2].mBinding = 0;
-    GeometryLoadDesc sceneGDesc = {};
-    sceneGDesc.ppGeometry = &pSceneGeometry;
-    sceneGDesc.ppGeometryData = &pSceneGeometryData;
-    sceneGDesc.pFileName = kSceneMeshPath;
-    sceneGDesc.pVertexLayout = &mSceneVertexLayout;
-    addResource(&sceneGDesc, NULL);
-
-    skyBox.LoadDefault(mRenderContext);
+    mScene.LoadMeshResource(mRenderContext, kSceneMeshPath);
+    mSkyBox.LoadDefault(mRenderContext);
 
     BufferLoadDesc ubDesc = {};
     ubDesc.mDesc.mDescriptors = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -116,10 +91,8 @@ public:
       removeResource(pSkyboxUniformBuffer[i]);
     }
 
-    removeResource(pSceneGeometry);
-    removeResource(pSceneGeometryData);
-
-    skyBox.Destroy(mRenderContext);
+    mScene.Destroy(mRenderContext);
+    mSkyBox.Destroy(mRenderContext);
 
     mRenderContext.Exit();
   }
@@ -323,7 +296,7 @@ public:
     cmdBindDescriptorSet(cmd, 0, pDescriptorSetTexture);
     cmdBindDescriptorSet(cmd, frame.index * 2 + 0, pDescriptorSetUniforms);
     cmdBindVertexBuffer(cmd, 1,
-                        const_cast<Buffer **>(&skyBox.GetVertexBuffer()),
+                        const_cast<Buffer **>(&mSkyBox.GetVertexBuffer()),
                         &skyboxVbStride, NULL);
     cmdDraw(cmd, 36, 0);
     cmdSetViewport(cmd, 0.0f, 0.0f, (float)frame.pImage->mWidth,
@@ -333,11 +306,11 @@ public:
     cmdBeginGpuTimestampQuery(cmd, mGpuProfileToken, "Draw Scene");
     cmdBindPipeline(cmd, pScenePipeline);
     cmdBindDescriptorSet(cmd, frame.index * 2 + 1, pDescriptorSetUniforms);
-    cmdBindVertexBuffer(cmd, pSceneGeometry->mVertexBufferCount,
-                        pSceneGeometry->pVertexBuffers,
-                        &mSceneVertexLayout.mBindings[0].mStride, nullptr);
-    cmdBindIndexBuffer(cmd, pSceneGeometry->pIndexBuffer, INDEX_TYPE_UINT16, 0);
-    cmdDrawIndexed(cmd, pSceneGeometry->mIndexCount, 0, 0);
+    cmdBindVertexBuffer(cmd, mScene.GetVertexBufferCount(),
+                        mScene.GetVertexBuffers(),
+                        &kSceneVertexLayout.mBindings[0].mStride, nullptr);
+    cmdBindIndexBuffer(cmd, mScene.GetIndexBuffer(), INDEX_TYPE_UINT16, 0);
+    cmdDrawIndexed(cmd, mScene.GetIndexCount(), 0, 0);
     cmdEndGpuTimestampQuery(cmd, mGpuProfileToken);
 
     cmdEndGpuTimestampQuery(cmd, mGpuProfileToken); // Draw Canvas
@@ -456,7 +429,8 @@ private:
     pipelineSettings.mDepthStencilFormat = mRenderContext.GetDepthFormat();
     pipelineSettings.pRootSignature = pRootSignature;
     pipelineSettings.pShaderProgram = pSceneShader;
-    pipelineSettings.pVertexLayout = &mSceneVertexLayout;
+    pipelineSettings.pVertexLayout =
+        const_cast<VertexLayout *>(&kSceneVertexLayout);
     pipelineSettings.pRasterizerState = &sceneRasterizerStateDesc;
     pipelineSettings.mVRFoveatedRendering = true;
     pScenePipeline = mRenderContext.CreatePipeline(&desc);
@@ -488,19 +462,19 @@ private:
     // Prepare descriptor sets
     DescriptorData params[7] = {};
     params[0].pName = "RightText";
-    params[0].ppTextures = const_cast<Texture **>(&skyBox.GetTexture(0));
+    params[0].ppTextures = const_cast<Texture **>(&mSkyBox.GetTexture(0));
     params[1].pName = "LeftText";
-    params[1].ppTextures = const_cast<Texture **>(&skyBox.GetTexture(1));
+    params[1].ppTextures = const_cast<Texture **>(&mSkyBox.GetTexture(1));
     params[2].pName = "TopText";
-    params[2].ppTextures = const_cast<Texture **>(&skyBox.GetTexture(2));
+    params[2].ppTextures = const_cast<Texture **>(&mSkyBox.GetTexture(2));
     params[3].pName = "BotText";
-    params[3].ppTextures = const_cast<Texture **>(&skyBox.GetTexture(3));
+    params[3].ppTextures = const_cast<Texture **>(&mSkyBox.GetTexture(3));
     params[4].pName = "FrontText";
-    params[4].ppTextures = const_cast<Texture **>(&skyBox.GetTexture(4));
+    params[4].ppTextures = const_cast<Texture **>(&mSkyBox.GetTexture(4));
     params[5].pName = "BackText";
-    params[5].ppTextures = const_cast<Texture **>(&skyBox.GetTexture(5));
+    params[5].ppTextures = const_cast<Texture **>(&mSkyBox.GetTexture(5));
     params[6].pName = "uSampler0";
-    params[6].ppSamplers = const_cast<Sampler **>(&skyBox.GetSampler());
+    params[6].ppSamplers = const_cast<Sampler **>(&mSkyBox.GetSampler());
     mRenderContext.UpdateDescriptorSet(pDescriptorSetTexture, 0, 7, params);
 
     for (uint32_t i = 0; i < RenderContext::kDataBufferCount; ++i) {
@@ -518,27 +492,25 @@ private:
   }
 
   const char *const kSceneMeshPath = "castle.bin";
-  Geometry *pSceneGeometry;
-  GeometryData *pSceneGeometryData;
+
+  SkyBox mSkyBox;
+  Scene mScene;
+
   Shader *pSceneShader = NULL;
   Pipeline *pScenePipeline = NULL;
-  VertexLayout mSceneVertexLayout = {};
-  uint32_t mSceneLayoutType = 0;
-
-  SkyBox skyBox;
   Shader *pSkyBoxDrawShader = NULL;
   Pipeline *pSkyBoxDrawPipeline = NULL;
   RootSignature *pRootSignature = NULL;
   DescriptorSet *pDescriptorSetTexture = {NULL};
   DescriptorSet *pDescriptorSetUniforms = {NULL};
 
+  UniformBlock mUniformData;
+  UniformBlockSky mUniformDataSky;
+
   Buffer *pSceneUniformBuffer[RenderContext::kDataBufferCount] = {NULL};
   Buffer *pSkyboxUniformBuffer[RenderContext::kDataBufferCount] = {NULL};
 
   ProfileToken mGpuProfileToken = PROFILE_INVALID_TOKEN;
-
-  UniformBlock mUniformData;
-  UniformBlockSky mUniformDataSky;
 
   ICameraController *pCameraController = NULL;
 
@@ -556,7 +528,6 @@ private:
                                              "E: Orbit up\n"
                                              "Mouse drag: Orbit around\n";
   bstring gControlsText = bfromarr(kControlsTextCharArray);
-
   float mCameraAcceleration = 600.0f;
   float mCameraBraking = 200.0f;
   float mCameraZoomSpeed = 1.0f;
