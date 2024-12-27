@@ -1,5 +1,7 @@
 #include "Scene.hpp"
 
+#include "SceneRenderSystem.hpp"
+
 void Scene::LoadMeshResource(RenderContext &renderContext,
                              const char *pResourceFileName) {
   GeometryLoadDesc sceneGDesc = {};
