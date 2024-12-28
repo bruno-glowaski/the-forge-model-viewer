@@ -16,7 +16,6 @@
 #include "Resources/ResourceLoader/Interfaces/IResourceLoader.h"
 
 // Math
-#include "Utilities/Interfaces/IMemory.h"
 #include "Utilities/Math/MathTypes.h"
 
 // Systems
@@ -39,9 +38,6 @@ public:
     mRenderSystem.Init(mRenderContext);
     mGuiSystem.Init();
 
-    mScene.LoadMeshResource(mRenderContext, kSceneMeshPath);
-    mSkyBox.LoadDefault(mRenderContext);
-
     mGpuProfileToken = mRenderContext.CreateGpuProfiler("Graphics");
 
     waitForAllResourceLoads();
@@ -51,6 +47,10 @@ public:
     pCameraController = initOrbitCameraController(camPos, lookAt);
 
     AddCustomInputBindings();
+
+    mScene.LoadRawFBX(mRenderContext, "castle.fbx");
+    mSkyBox.LoadDefault(mRenderContext);
+    waitForAllResourceLoads();
 
     return true;
   }
@@ -193,8 +193,6 @@ private:
   RenderContext mRenderContext;
   SceneRenderSystem mRenderSystem;
   GuiSystem mGuiSystem;
-
-  const char *const kSceneMeshPath = "castle.bin";
 
   SkyBox mSkyBox;
 

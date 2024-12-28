@@ -99,7 +99,7 @@ void SceneRenderSystem::DrawScene(RenderContext::Frame &frame,
   cmdBindPipeline(cmd, pScenePipeline);
   cmdBindDescriptorSet(cmd, frame.index * 2 + 1, pDescriptorSetUniforms);
   cmdBindVertexBuffer(cmd, scene.GetVertexBufferCount(),
-                      scene.GetVertexBuffers(),
+                      const_cast<Buffer **>(scene.GetVertexBuffers()),
                       &kSceneVertexLayout.mBindings[0].mStride, nullptr);
   cmdBindIndexBuffer(cmd, scene.GetIndexBuffer(), INDEX_TYPE_UINT16, 0);
   cmdDrawIndexed(cmd, scene.GetIndexCount(), 0, 0);
