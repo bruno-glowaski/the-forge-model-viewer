@@ -24,6 +24,8 @@ include(TheForge)
 include(TheForgeUtils)
 include(SpirVTools)
 
+add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Vendor/OpenFBX")
+
 file(GLOB MODEL_VIEWER_SRC "${CMAKE_SOURCE_DIR}/src/*.*")
 add_executable(ModelViewer ${MODEL_VIEWER_SRC})
 
@@ -33,7 +35,7 @@ target_include_directories(ModelViewer PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/TheForge/Tools"
 )
 
-set(MODEL_VIEWER_LIBS OS Renderer)
+set(MODEL_VIEWER_LIBS OS Renderer OpenFBX)
 if (LINUX)
 	list(APPEND MODEL_VIEWER_LIBS udev)
 elseif(WIN32)
