@@ -128,6 +128,8 @@ bool RenderContext::Load(WindowHandle hWindow, uint32_t width, uint32_t height,
   fontLoad.mHeight = height;
   fontLoad.mLoadType = pReloadDesc->mType;
   loadFontSystem(&fontLoad);
+
+  return true;
 }
 
 void RenderContext::Unload(ReloadDesc *pReloadDesc) {
