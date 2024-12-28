@@ -74,6 +74,7 @@ void Scene::LoadRawFBX(RenderContext &renderContext,
   auto indices =
       reinterpret_cast<int32_t *>(tf_calloc(maxVertexCount, sizeof(int32_t)));
 
+  mIndexCount = 0;
   auto indicesCursor = indices;
   for (size_t i = 0; i < scene->getGeometryCount(); i++) {
     auto geometry = scene->getGeometry(i);
@@ -98,6 +99,7 @@ void Scene::LoadRawFBX(RenderContext &renderContext,
               {uv.x, uv.y},
           };
         }
+        mIndexCount += triCount;
         indicesCursor += triCount;
       }
     }
