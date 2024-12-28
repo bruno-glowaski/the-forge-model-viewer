@@ -19,10 +19,14 @@
 #include "Utilities/Interfaces/IMemory.h"
 #include "Utilities/Math/MathTypes.h"
 
+// Systems
+#include "GuiSystem.hpp"
 #include "OrbitCameraController.hpp"
 #include "RenderContext.hpp"
-#include "Scene.hpp"
 #include "SceneRenderSystem.hpp"
+
+// Resources
+#include "Scene.hpp"
 #include "SkyBox.hpp"
 
 class ModelViewer : public IApp {
@@ -33,13 +37,10 @@ public:
       return false;
     }
     mRenderSystem.Init(mRenderContext);
+    mGuiSystem.Init();
 
     mScene.LoadMeshResource(mRenderContext, kSceneMeshPath);
     mSkyBox.LoadDefault(mRenderContext);
-
-    FontDesc font = {};
-    font.pFontPath = "TitilliumText/TitilliumText-Bold.otf";
-    fntDefineFonts(&font, 1, &gFontID);
 
     mGpuProfileToken = mRenderContext.CreateGpuProfiler("Graphics");
 
@@ -57,10 +58,11 @@ public:
   void Exit() {
     exitCameraController(pCameraController);
 
-    mRenderSystem.Exit(mRenderContext);
-
     mScene.Destroy(mRenderContext);
     mSkyBox.Destroy(mRenderContext);
+
+    mGuiSystem.Exit();
+    mRenderSystem.Exit(mRenderContext);
 
     mRenderContext.Exit();
   }
@@ -72,80 +74,18 @@ public:
       return false;
     }
     mRenderSystem.Load(mRenderContext, mSkyBox, pReloadDesc);
-
-    if (pReloadDesc->mType & (RELOAD_TYPE_RESIZE | RELOAD_TYPE_RENDERTARGET)) {
-      UIComponentDesc constrolsGuiDesc{};
-      constrolsGuiDesc.mStartPosition =
-          vec2(mSettings.mWidth * 0.01f, mSettings.mHeight * 0.01f);
-      uiAddComponent("Controls", &constrolsGuiDesc, &pControlsGui);
-
-      static float4 color = {1.0f, 1.0f, 1.0f, 0.75f};
-      DynamicTextWidget controlsManualWidget;
-      controlsManualWidget.pText = &gControlsText;
-      controlsManualWidget.pColor = &color;
-      uiAddComponentWidget(pControlsGui, "Manual", &controlsManualWidget,
-                           WIDGET_TYPE_DYNAMIC_TEXT);
-
-      SliderFloatWidget cameraAccelerationWidget;
-      cameraAccelerationWidget.mMin = 0.0f;
-      cameraAccelerationWidget.mMax = 1000.0f;
-      cameraAccelerationWidget.mStep = 1.0f;
-      cameraAccelerationWidget.pData = &mCameraAcceleration;
-      uiAddComponentWidget(pControlsGui, "Camera Acceleration",
-                           &cameraAccelerationWidget, WIDGET_TYPE_SLIDER_FLOAT);
-
-      SliderFloatWidget cameraBrakingWidget;
-      cameraBrakingWidget.mMin = 0.0f;
-      cameraBrakingWidget.mMax = 1000.0f;
-      cameraBrakingWidget.mStep = 1.0f;
-      cameraBrakingWidget.pData = &mCameraBraking;
-      uiAddComponentWidget(pControlsGui, "Camera Braking", &cameraBrakingWidget,
-                           WIDGET_TYPE_SLIDER_FLOAT);
-
-      SliderFloatWidget cameraZoomSpeedWidget;
-      cameraZoomSpeedWidget.mMin = 0.0f;
-      cameraZoomSpeedWidget.mMax = 1000.0f;
-      cameraZoomSpeedWidget.mStep = 1.0f;
-      cameraZoomSpeedWidget.pData = &mCameraZoomSpeed;
-      uiAddComponentWidget(pControlsGui, "Zoom Speed", &cameraZoomSpeedWidget,
-                           WIDGET_TYPE_SLIDER_FLOAT);
-
-      SliderFloatWidget cameraOrbitSpeedWidget;
-      cameraOrbitSpeedWidget.mMin = 0.0f;
-      cameraOrbitSpeedWidget.mMax = 1000.0f;
-      cameraOrbitSpeedWidget.mStep = 1.0f;
-      cameraOrbitSpeedWidget.pData = &mCameraOrbitSpeed;
-      uiAddComponentWidget(pControlsGui, "Orbit Speed", &cameraOrbitSpeedWidget,
-                           WIDGET_TYPE_SLIDER_FLOAT);
-
-      UIComponentDesc sceneGuiDesc{};
-      sceneGuiDesc.mStartPosition =
-          vec2(mSettings.mWidth * 0.01f, mSettings.mHeight * 0.87f);
-      uiAddComponent("Scene", &sceneGuiDesc, &pSceneGui);
-
-      SliderFloatWidget sceneScaleWidget;
-      sceneScaleWidget.mMin = 0.0f;
-      sceneScaleWidget.mMax = 100.0f;
-      sceneScaleWidget.mStep = 0.1f;
-      sceneScaleWidget.pData = &gSceneScale;
-      uiAddComponentWidget(pSceneGui, "Scale", &sceneScaleWidget,
-                           WIDGET_TYPE_SLIDER_FLOAT);
-    }
+    mGuiSystem.Load({&mSceneScale, &mCameraAcceleration, &mCameraBraking,
+                     &mCameraZoomSpeed, &mCameraOrbitSpeed},
+                    mSettings.mWidth, mSettings.mHeight, pReloadDesc);
 
     return true;
   }
 
   void Unload(ReloadDesc *pReloadDesc) {
     mRenderContext.WaitIdle();
-
     mRenderContext.Unload(pReloadDesc);
-
     mRenderSystem.Unload(mRenderContext, pReloadDesc);
-
-    if (pReloadDesc->mType & (RELOAD_TYPE_RESIZE | RELOAD_TYPE_RENDERTARGET)) {
-      uiRemoveComponent(pSceneGui);
-      uiRemoveComponent(pControlsGui);
-    }
+    mGuiSystem.Unload(pReloadDesc);
   }
 
   void Update(float deltaTime) {
@@ -181,7 +121,7 @@ public:
 
     pCameraController->update(deltaTime);
 
-    mat4 sceneMat = mat4::scale(vec3(gSceneScale));
+    mat4 sceneMat = mat4::scale(vec3(mSceneScale));
     mat4 viewMat = pCameraController->getViewMatrix();
     const float horizontal_fov = PI / 2.0f;
     const float aspectInverse =
@@ -215,7 +155,7 @@ public:
     cmdBindRenderTargets(cmd, NULL);
 
     cmdBeginGpuTimestampQuery(cmd, mGpuProfileToken, "Draw UI");
-    DrawUI(frame);
+    mGuiSystem.Draw(frame, mGpuProfileToken);
     cmdEndGpuTimestampQuery(cmd, mGpuProfileToken);
 
     cmdBindRenderTargets(cmd, NULL);
@@ -242,26 +182,6 @@ public:
     cmdSetScissor(cmd, 0, 0, frame.pImage->mWidth, frame.pImage->mHeight);
   }
 
-  void DrawUI(RenderContext::Frame &frame) {
-    Cmd *cmd = frame.mCmdRingElement.pCmds[0];
-
-    BindRenderTargetsDesc bindRenderTargets = {};
-    bindRenderTargets.mRenderTargetCount = 1;
-    bindRenderTargets.mRenderTargets[0] = {frame.pImage, LOAD_ACTION_LOAD};
-    bindRenderTargets.mDepthStencil = {NULL, LOAD_ACTION_DONTCARE};
-    cmdBindRenderTargets(cmd, &bindRenderTargets);
-
-    gFrameTimeDraw.mFontColor = 0xff00ffff;
-    gFrameTimeDraw.mFontSize = 18.0f;
-    gFrameTimeDraw.mFontID = gFontID;
-    float2 txtSizePx =
-        cmdDrawCpuProfile(cmd, float2(8.f, 15.f), &gFrameTimeDraw);
-    cmdDrawGpuProfile(cmd, float2(8.f, txtSizePx.y + 75.f), mGpuProfileToken,
-                      &gFrameTimeDraw);
-
-    cmdDrawUserInterface(cmd);
-  }
-
   const char *GetName() { return "ModelViewer"; }
 
   static void RequestShadersReload(void *) {
@@ -272,32 +192,20 @@ public:
 private:
   RenderContext mRenderContext;
   SceneRenderSystem mRenderSystem;
+  GuiSystem mGuiSystem;
 
   const char *const kSceneMeshPath = "castle.bin";
+
   SkyBox mSkyBox;
+
+  float mSceneScale = 1.0f;
   Scene mScene;
 
-  ICameraController *pCameraController = NULL;
-
-  uint32_t gFontID = 0;
-  FontDrawDesc gFrameTimeDraw;
-  UIComponent *pControlsGui = NULL;
-  const char *const kControlsTextCharArray = "Manual:\n"
-                                             "W: Zoom in\n"
-                                             "S: Zoom out\n"
-                                             "A: Orbit right\n"
-                                             "D: Orbit left\n"
-                                             "Q: Orbit down\n"
-                                             "E: Orbit up\n"
-                                             "Mouse drag: Orbit around\n";
-  bstring gControlsText = bfromarr(kControlsTextCharArray);
   float mCameraAcceleration = 600.0f;
   float mCameraBraking = 200.0f;
   float mCameraZoomSpeed = 1.0f;
   float mCameraOrbitSpeed = 1.0f;
-
-  UIComponent *pSceneGui = NULL;
-  float gSceneScale = 1.0f;
+  ICameraController *pCameraController = NULL;
 
   ProfileToken mGpuProfileToken = PROFILE_INVALID_TOKEN;
 };
