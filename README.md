@@ -41,5 +41,5 @@ git clone --recurse-submodules https://github.com/bruno-glowaski/the-forge-model
         - Obs.: copy the whole folder;
 5. Compile and configure the project.
 
-On Windows, either use Visual Studios 2019 or comment out line 239-243 in `Vendor/TheForge/Common_3/Application/Config.h` to disable the MSVC whitelist.
+On Windows, either use Visual Studios 2019 or comment out the line 239-243 in `Vendor/TheForge/Common_3/Application/Config.h` to disable the MSVC whitelist.
 
