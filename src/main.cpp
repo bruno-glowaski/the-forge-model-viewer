@@ -38,6 +38,9 @@ public:
     mRenderSystem.Init(mRenderContext);
     mGuiSystem.Init();
 
+    mScene.LoadRawFBX(mRenderContext, "castle.fbx");
+    mSkyBox.LoadDefault(mRenderContext);
+
     mGpuProfileToken = mRenderContext.CreateGpuProfiler("Graphics");
 
     waitForAllResourceLoads();
@@ -47,10 +50,6 @@ public:
     pCameraController = initOrbitCameraController(camPos, lookAt);
 
     AddCustomInputBindings();
-
-    mScene.LoadRawFBX(mRenderContext, "castle.fbx");
-    mSkyBox.LoadDefault(mRenderContext);
-    waitForAllResourceLoads();
 
     return true;
   }
