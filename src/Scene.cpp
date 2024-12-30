@@ -2,7 +2,6 @@
 
 #include "Utilities/Math/ShaderUtilities.h"
 
-// FBX Loader
 #include "ofbx.h"
 
 #include "SceneRenderSystem.hpp"
@@ -57,18 +56,21 @@ void Scene::LoadRawFBX(RenderContext &renderContext,
     LOGF(LogLevel::eERROR, "Failed to load FBX: %s", ofbx::getError());
   }
 
-  size_t maxTriangleCount = 0;
-  for (size_t i = 0; i < scene->getGeometryCount(); i++) {
-    auto geometry = scene->getGeometry(i);
-    auto &data = geometry->getGeometryData();
-
-    for (size_t j = 0; j < data.getPartitionCount(); j++) {
-      auto partition = data.getPartition(j);
-      maxTriangleCount += partition.triangles_count * 3;
+  uint32_t maxVertexCount = 0;
+  uint32_t maxIndexPerPolygonCount = 0;
+  for (uint32_t geomIdx = 0; geomIdx < scene->getGeometryCount(); geomIdx++) {
+    auto geometry = scene->getGeometry(geomIdx);
+    auto &geomData = geometry->getGeometryData();
+    for (uint32_t partIdx = 0; partIdx < geomData.getPartitionCount();
+         partIdx++) {
+      auto partition = geomData.getPartition(partIdx);
+      maxVertexCount += partition.triangles_count * 3;
+      maxIndexPerPolygonCount =
+          max(maxIndexPerPolygonCount,
+              (uint32_t)partition.max_polygon_triangles * 3);
     }
   }
-  auto maxVertexCount = maxTriangleCount * 3;
-
+  uint32_t maxIndexCount = maxVertexCount;
   auto vertices = reinterpret_cast<SceneVertex *>(
       tf_calloc(maxVertexCount, sizeof(SceneVertex)));
   auto indices =
@@ -77,32 +79,36 @@ void Scene::LoadRawFBX(RenderContext &renderContext,
   auto indexTmp = reinterpret_cast<int32_t *>(
       tf_calloc(maxIndexPerPolygonCount, sizeof(int32_t)));
   mIndexCount = 0;
-  auto indicesCursor = indices;
-  for (size_t i = 0; i < scene->getGeometryCount(); i++) {
-    auto geometry = scene->getGeometry(i);
-    auto &data = geometry->getGeometryData();
-    auto positions = data.getPositions();
-    auto normals = data.getNormals();
-    auto uvs = data.getUVs();
+  auto write = [&](SceneVertex vertex) {
+    vertices[mIndexCount] = vertex;
+    indices[mIndexCount] = mIndexCount;
+    mIndexCount++;
+  };
 
-    for (size_t j = 0; j < data.getPartitionCount(); j++) {
-      auto partition = data.getPartition(j);
-      for (size_t k = 0; k < partition.polygon_count; k++) {
-        auto &polygon = partition.polygons[k];
-        uint32_t triCount = ofbx::triangulate(data, polygon, indicesCursor);
-        for (size_t l = 0; l < triCount; l++) {
-          size_t vertexIndex = indicesCursor[l];
-          auto position = positions.get(vertexIndex);
-          auto normal = normals.get(vertexIndex);
-          auto uv = uvs.get(vertexIndex);
-          vertices[vertexIndex] = {
-              {position.x, position.y, position.z},
-              packUnorm2x16(encodeDir({normal.x, normal.y, normal.z})),
-              {uv.x, uv.y},
-          };
+  for (uint32_t geomIdx = 0; geomIdx < scene->getGeometryCount(); geomIdx++) {
+    auto geometry = scene->getGeometry(geomIdx);
+    auto &geomData = geometry->getGeometryData();
+    auto positions = geomData.getPositions();
+    auto normals = geomData.getNormals();
+    auto uvs = geomData.getUVs();
+    for (uint32_t partIdx = 0; partIdx < geomData.getPartitionCount();
+         partIdx++) {
+      auto partition = geomData.getPartition(partIdx);
+      for (size_t polyIdx = 0; polyIdx < partition.polygon_count; polyIdx++) {
+        auto polygon = partition.polygons[polyIdx];
+        uint32_t vertexCount = ofbx::triangulate(geomData, polygon, indexTmp);
+        for (size_t vtxIdx = 0; vtxIdx < vertexCount; vtxIdx++) {
+          int32_t geomVIdx = indexTmp[vtxIdx];
+          auto rawPosition = positions.get(geomVIdx);
+          auto rawNormal = normals.get(geomVIdx);
+          auto rawUv = uvs.get(geomVIdx);
+          float3 position = {(float)rawPosition.x, (float)rawPosition.y,
+                             (float)rawPosition.z};
+          uint32_t normal =
+              packUnorm2x16(encodeDir({rawNormal.x, rawNormal.y, rawNormal.z}));
+          uint32_t uv = packFloat2ToHalf2({rawUv.x, rawUv.y});
+          write({position, normal, uv});
         }
-        mIndexCount += triCount;
-        indicesCursor += triCount;
       }
     }
   }
