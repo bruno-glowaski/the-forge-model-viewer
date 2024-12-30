@@ -10,7 +10,7 @@
 struct SceneVertex {
   float3 mPosition;
   uint32_t mNormal;
-  float2 mUv;
+  uint32_t mUv;
 };
 
 void Scene::LoadMeshResource(RenderContext &renderContext,
@@ -72,8 +72,10 @@ void Scene::LoadRawFBX(RenderContext &renderContext,
   auto vertices = reinterpret_cast<SceneVertex *>(
       tf_calloc(maxVertexCount, sizeof(SceneVertex)));
   auto indices =
-      reinterpret_cast<int32_t *>(tf_calloc(maxVertexCount, sizeof(int32_t)));
+      reinterpret_cast<int16_t *>(tf_calloc(maxIndexCount, sizeof(int16_t)));
 
+  auto indexTmp = reinterpret_cast<int32_t *>(
+      tf_calloc(maxIndexPerPolygonCount, sizeof(int32_t)));
   mIndexCount = 0;
   auto indicesCursor = indices;
   for (size_t i = 0; i < scene->getGeometryCount(); i++) {
@@ -104,12 +106,13 @@ void Scene::LoadRawFBX(RenderContext &renderContext,
       }
     }
   }
+  tf_free(indexTmp);
 
   BufferLoadDesc vbDesc = {};
   vbDesc.mDesc.mDescriptors = DESCRIPTOR_TYPE_VERTEX_BUFFER;
   vbDesc.mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
   vbDesc.mDesc.pName = "VertexBuffer";
-  vbDesc.mDesc.mSize = maxVertexCount;
+  vbDesc.mDesc.mSize = maxVertexCount * sizeof(SceneVertex);
   vbDesc.pData = vertices;
   vbDesc.ppBuffer = &pVertexBuffer;
   addResource(&vbDesc, nullptr);
@@ -118,7 +121,7 @@ void Scene::LoadRawFBX(RenderContext &renderContext,
   ibDesc.mDesc.mDescriptors = DESCRIPTOR_TYPE_INDEX_BUFFER;
   ibDesc.mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
   ibDesc.mDesc.pName = "IndexBuffer";
-  ibDesc.mDesc.mSize = maxVertexCount;
+  ibDesc.mDesc.mSize = maxIndexCount * sizeof(uint16_t);
   ibDesc.pData = indices;
   ibDesc.ppBuffer = &pIndexBuffer;
   addResource(&ibDesc, nullptr);
