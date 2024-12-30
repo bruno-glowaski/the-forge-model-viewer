@@ -14,7 +14,7 @@ A 3D model viewer developed over the [The Forge Framework](https://github.com/Co
 
 - [x] User can control the camera parameters;
 - [x] User can scale the model as they please;
-- [ ] User can load any FBX model directly;
+- [x] User can load any FBX model directly;
 - [ ] User can toggle multisampling;
 - [ ] User can configure lights;
 - [ ] User can toggle ambient occlusion;
