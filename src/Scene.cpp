@@ -54,6 +54,7 @@ void Scene::LoadRawFBX(RenderContext &renderContext,
   auto scene = ofbx::load(data, fileSize, (ofbx::u16)flags);
   if (scene == nullptr) {
     LOGF(LogLevel::eERROR, "Failed to load FBX: %s", ofbx::getError());
+    ASSERT(false);
   }
 
   uint32_t maxVertexCount = 0;
