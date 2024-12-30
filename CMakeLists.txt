@@ -10,13 +10,13 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_UNIT_TESTS "Build The-Forge's unit tests" ON)
-option(BUILD_ASSETPIPELINE "Build The-Forge's asset pipeline command" ON)
+option(BUILD_ASSETPIPELINE "Build The-Forge's asset pipeline command" OFF)
 
-if (NOT FBX2GLTF_BIN) 
-	message(FATAL_ERROR "FBX2GLTF_BIN is unset. Download it (such as from https://github.com/facebookincubator/FBX2glT) and set FBX2GLTF_BIN with its path.")
-elseif(NOT EXISTS "${FBX2GLTF_BIN}")
-	message(FATAL_ERROR "Could not find \"${FBX2GLTF_BIN}\"")
-endif()
+# if (NOT FBX2GLTF_BIN) 
+# 	message(FATAL_ERROR "FBX2GLTF_BIN is unset. Download it (such as from https://github.com/facebookincubator/FBX2glT) and set FBX2GLTF_BIN with its path.")
+# elseif(NOT EXISTS "${FBX2GLTF_BIN}")
+# 	message(FATAL_ERROR "Could not find \"${FBX2GLTF_BIN}\"")
+# endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
@@ -46,28 +46,28 @@ target_link_libraries(ModelViewer PRIVATE ${MODEL_VIEWER_LIBS})
 
 determine_resources_dir(ModelViewer MODELVIEWER_RESOURCES_DIR)
 
-file(GLOB MODEL_VIEWER_FBX_MESHES "${CMAKE_SOURCE_DIR}/Assets/Meshes/*.fbx")
-file(GLOB MODEL_VIEWER_GLTF_MESHES "${CMAKE_SOURCE_DIR}/Assets/Meshes/*.gltf")
-file(GLOB MODEL_VIEWER_GLB_MESHES "${CMAKE_SOURCE_DIR}/Assets/Meshes/*.glb")
+# file(GLOB MODEL_VIEWER_FBX_MESHES "${CMAKE_SOURCE_DIR}/Assets/Meshes/*.fbx")
+# file(GLOB MODEL_VIEWER_GLTF_MESHES "${CMAKE_SOURCE_DIR}/Assets/Meshes/*.gltf")
+# file(GLOB MODEL_VIEWER_GLB_MESHES "${CMAKE_SOURCE_DIR}/Assets/Meshes/*.glb")
 
-foreach(MODEL_VIEWER_FBX_MESH ${MODEL_VIEWER_FBX_MESHES})
-	string(REGEX REPLACE "[.]fbx$" ".glb" MODEL_VIEWER_GLB_MESH ${MODEL_VIEWER_FBX_MESH})
-	add_custom_command(OUTPUT ${MODEL_VIEWER_GLB_MESH}
-		COMMAND ${FBX2GLTF_BIN} -b -i ${MODEL_VIEWER_FBX_MESH} -o ${MODEL_VIEWER_GLB_MESH}
-		DEPENDS ${MODEL_VIEWER_FBX_MESH}
-	)
-	list(APPEND MODEL_VIEWER_GLB_MESHES ${MODEL_VIEWER_GLB_MESH})
-endforeach()
+# foreach(MODEL_VIEWER_FBX_MESH ${MODEL_VIEWER_FBX_MESHES})
+# 	string(REGEX REPLACE "[.]fbx$" ".glb" MODEL_VIEWER_GLB_MESH ${MODEL_VIEWER_FBX_MESH})
+# 	add_custom_command(OUTPUT ${MODEL_VIEWER_GLB_MESH}
+# 		COMMAND ${FBX2GLTF_BIN} -b -i ${MODEL_VIEWER_FBX_MESH} -o ${MODEL_VIEWER_GLB_MESH}
+# 		DEPENDS ${MODEL_VIEWER_FBX_MESH}
+# 	)
+# 	list(APPEND MODEL_VIEWER_GLB_MESHES ${MODEL_VIEWER_GLB_MESH})
+# endforeach()
 
-foreach(MODEL_VIEWER_GLTF_MESH ${MODEL_VIEWER_GLTF_MESHES} ${MODEL_VIEWER_GLB_MESHES})
-	string(REGEX REPLACE "[.](gltf|glb)$" ".bin" MODEL_VIEWER_TF_MESH ${MODEL_VIEWER_GLTF_MESH})
-
-	add_custom_command(OUTPUT ${MODEL_VIEWER_TF_MESH}
-		COMMAND ${ASSETPIPELINE_CMD} -pgltf --input-file ${MODEL_VIEWER_GLTF_MESH}
-		DEPENDS ${MODEL_VIEWER_GLTF_MESH}
-	)
-	list(APPEND MODEL_VIEWER_TF_MESHES ${MODEL_VIEWER_TF_MESH})
-endforeach()
+# foreach(MODEL_VIEWER_GLTF_MESH ${MODEL_VIEWER_GLTF_MESHES} ${MODEL_VIEWER_GLB_MESHES})
+# 	string(REGEX REPLACE "[.](gltf|glb)$" ".bin" MODEL_VIEWER_TF_MESH ${MODEL_VIEWER_GLTF_MESH})
+#
+# 	add_custom_command(OUTPUT ${MODEL_VIEWER_TF_MESH}
+# 		COMMAND ${ASSETPIPELINE_CMD} -pgltf --input-file ${MODEL_VIEWER_GLTF_MESH}
+# 		DEPENDS ${MODEL_VIEWER_GLTF_MESH}
+# 	)
+# 	list(APPEND MODEL_VIEWER_TF_MESHES ${MODEL_VIEWER_TF_MESH})
+# endforeach()
 
 add_custom_target(ModelViewerAssets
 	COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_SOURCE_DIR}/PathStatement.txt" "${MODELVIEWER_RESOURCES_DIR}/PathStatement.txt"
