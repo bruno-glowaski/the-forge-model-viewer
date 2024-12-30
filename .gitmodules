@@ -1,6 +1,6 @@
-[submodule "theforge"]
-	path = Vendor/TheForge
-	url = https://github.com/ConfettiFX/The-Forge.git
+[submodule "Vendor/OpenFBX"]
+	path = Vendor/OpenFBX
+  url = https://github.com/nem0/OpenFBX
 [submodule "Vendor/TheForge"]
 	path = Vendor/TheForge
 	url = https://github.com/ConfettiFX/The-Forge.git
